@@ -18,6 +18,10 @@ pi3.cfg
 /lemans/output/*
 !/lemans/output/README.md
 !/lemans/output/rawprogram0-only-kernel.xml
+# Kodiak flash-lava packaging (generated tarballs + staging dir)
+/kodiak/output/flash-lava/
+/kodiak/output/kodiak-flash.qcomflash.tar.gz
+/kodiak/output/kodiak-yocto.qcomflash.tar.gz
 /oe-core/
 /yocto/
 /bitbake/
