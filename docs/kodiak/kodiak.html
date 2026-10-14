@@ -524,7 +524,7 @@
     </div>
     <div class="card" onclick="goTo('s-flash')" style="cursor:pointer;padding:12px 14px">
       <h3 style="font-size:13px;margin-bottom:3px">Flashing</h3>
-      <p style="font-size:11px;color:var(--muted)">QDL / Firehose · flash-loader vs flash-efi</p>
+      <p style="font-size:11px;color:var(--muted)">QDL / Firehose · flash-bootimage vs flash-uki</p>
     </div>
     <div class="card" onclick="goTo('s-lava')" style="cursor:pointer;padding:12px 14px">
       <h3 style="font-size:13px;margin-bottom:3px">Flashing via LAVA</h3>
@@ -691,7 +691,7 @@
     <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-bottom:8px">
       <code style="color:var(--accent);font-size:13px">make tfa</code>
       <span style="margin:0 8px">—</span>Bootloader pipeline<span style="margin:0 8px">→</span>
-      <code style="color:var(--red);font-size:13px">make flash-loader</code>
+      <code style="color:var(--red);font-size:13px">make flash-bootimage</code>
     </div>
     <div class="chain" style="margin-bottom:4px">
       <div class="chain-box pur"><div class="cb-label">OP-TEE OS</div><div class="cb-sub">tee-raw.bin</div></div>
@@ -701,7 +701,7 @@
       <div class="chain-box hl" style="min-width:150px"><div class="cb-label">make tfa</div><div class="cb-sub">build BL2 · sign tz.mbn<br>pack FIP → uefi.elf</div></div>
       <div class="arrow">→</div>
       <div class="chain-box" style="border-color:var(--red);background:#1a0d0d;min-width:130px">
-        <div class="cb-label" style="color:var(--red)">make flash-loader</div>
+        <div class="cb-label" style="color:var(--red)">make flash-bootimage</div>
         <div class="cb-sub">QDL / Firehose</div>
       </div>
     </div>
@@ -709,7 +709,7 @@
     <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-top:18px;margin-bottom:8px">
       <code style="color:var(--accent);font-size:13px">make uki</code>
       <span style="margin:0 8px">—</span>Kernel + Root pipeline<span style="margin:0 8px">→</span>
-      <code style="color:var(--red);font-size:13px">make flash-efi</code>
+      <code style="color:var(--red);font-size:13px">make flash-uki</code>
     </div>
     <div class="chain">
       <div class="chain-box yel"><div class="cb-label">Linux</div><div class="cb-sub">Image · el2.dtb</div></div>
@@ -719,7 +719,7 @@
       <div class="chain-box hl"><div class="cb-label">make uki</div><div class="cb-sub">uki.efi → efi.bin</div></div>
       <div class="arrow">→</div>
       <div class="chain-box" style="border-color:var(--red);background:#1a0d0d;min-width:130px">
-        <div class="cb-label" style="color:var(--red)">make flash-efi</div>
+        <div class="cb-label" style="color:var(--red)">make flash-uki</div>
         <div class="cb-sub">QDL / Firehose</div>
       </div>
     </div>
@@ -777,11 +777,11 @@
         <td class="muted">Download Qualcomm firmware blobs — no Yocto build needed</td>
       </tr>
       <tr>
-        <td><code style="color:var(--red)">flash-loader</code></td>
+        <td><code style="color:var(--red)">flash-bootimage</code></td>
         <td class="muted">Flash <strong style="color:var(--text)">tz.mbn + uefi.elf</strong> + blobs — first flash / boot-chain change</td>
       </tr>
       <tr>
-        <td><code style="color:var(--red)">flash-efi</code></td>
+        <td><code style="color:var(--red)">flash-uki</code></td>
         <td class="muted">Flash <strong style="color:var(--text)">efi.bin</strong> (UKI) only — fast kernel iteration</td>
       </tr>
 
@@ -945,17 +945,17 @@
   </p>
   <div class="card-grid cols2" style="max-width:860px">
     <div class="card" style="border-color:var(--red)">
-      <h3 style="color:var(--red)">make flash-loader</h3>
+      <h3 style="color:var(--red)">make flash-bootimage</h3>
       <ul style="font-size:12.5px">
         <li>Programs the <span>bootloader chain only</span></li>
         <li>firmware blobs, XBL, GPT</li>
         <li>TF-A (<code>tz.mbn</code>) + FIP (<code>uefi.elf</code>)</li>
         <li>Use after a full rebuild / first provisioning</li>
-        <li>Follow with <code>make flash-efi</code> for the kernel</li>
+        <li>Follow with <code>make flash-uki</code> for the kernel</li>
       </ul>
     </div>
     <div class="card" style="border-color:var(--yellow)">
-      <h3 style="color:var(--yellow)">make flash-efi</h3>
+      <h3 style="color:var(--yellow)">make flash-uki</h3>
       <ul style="font-size:12.5px">
         <li>Programs <span>only the EFI partition</span> (<code>efi.bin</code>)</li>
         <li>Filters <code>rawprogram0-only-kernel.xml</code> from <code>rawprogram0.xml</code></li>
@@ -1016,7 +1016,7 @@
       <div class="step-num">4</div>
       <div class="step-body">
         <strong>Flash partition images via rawprogram XML</strong>
-        <span>The XML manifests map each image file to a partition. <code>flash-loader</code> uses all rawprogram XMLs; <code>flash-efi</code> uses only the filtered EFI-partition XML.</span>
+        <span>The XML manifests map each image file to a partition. <code>flash-bootimage</code> uses all rawprogram XMLs; <code>flash-uki</code> uses only the filtered EFI-partition XML.</span>
       </div>
     </li>
     <li>
@@ -1035,7 +1035,7 @@
 <section id="s-lava" data-sec data-sec-title="Flashing via LAVA">
   <h2>Flashing via LAVA <span style="color:var(--accent);font-weight:400;font-size:.6em">remote lab boards — no local USB</span></h2>
   <p style="font-size:14px; color:var(--muted); margin-bottom:24px; max-width:760px; text-align:center">
-    <code>flash-loader</code> / <code>flash-efi</code> run <code>qdl</code> over USB against a board
+    <code>flash-bootimage</code> / <code>flash-uki</code> run <code>qdl</code> over USB against a board
     plugged into <strong style="color:var(--text)">your</strong> machine. The
     <a href="https://lava.infra.foundries.io/" style="color:var(--accent)">LAVA</a> lab boards are remote
     and not USB-reachable, so LAVA fetches a single flat flash <strong style="color:var(--text)">tarball</strong>
@@ -1048,7 +1048,7 @@
     <div class="card" style="border-color:var(--accent)">
       <h3 style="color:var(--accent)">make flash-lava</h3>
       <p style="margin-bottom:8px; line-height:1.6">
-        The LAVA counterpart of <code>flash-loader</code> + <code>flash-efi</code> <strong style="color:var(--text)">combined</strong>.
+        The LAVA counterpart of <code>flash-bootimage</code> + <code>flash-uki</code> <strong style="color:var(--text)">combined</strong>.
         Packages one flat <code>kodiak-flash.qcomflash.tar.gz</code> uniting both sets:
         LUNs 1,2,4 (loader: firehose, XBL, GPTs, <code>tz.mbn</code>, <code>uefi.elf</code>,
         <code>rawprogram4</code> with <code>dtb.bin</code> stripped) and LUN 0 (kernel:
@@ -1264,8 +1264,8 @@
         <ul style="font-size:12px">
           <li><span>_a / _b</span> — two slot copies of tz &amp; uefi; same image in both</li>
           <li><code>uki</code> is single (no A/B)</li>
-          <li><code>flash-loader</code> → tz + uefi (+ blobs)</li>
-          <li><code>flash-efi</code> → efi only</li>
+          <li><code>flash-bootimage</code> → tz + uefi (+ blobs)</li>
+          <li><code>flash-uki</code> → efi only</li>
         </ul>
       </div>
     </div>
@@ -2142,8 +2142,8 @@ Choice&gt; <span class="val">1 3</span>    <span class="cmt"># space/comma list;
     <div class="card">
       <h3>Flash</h3>
       <ul>
-        <li><span><code>make flash-loader</code> — bootloader provisioning only</span></li>
-        <li><span><code>make flash-efi</code> — EFI partition only (fast iteration)</span></li>
+        <li><span><code>make flash-bootimage</code> — bootloader provisioning only</span></li>
+        <li><span><code>make flash-uki</code> — EFI partition only (fast iteration)</span></li>
         <li><span>Uses QDL / Firehose protocol over USB in EDL mode</span></li>
         <li><span>Blobs: <code>kodiak/input/</code> → Yocto deploy → <code>make fetch-blobs</code></span></li>
       </ul>

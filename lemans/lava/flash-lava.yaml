@@ -48,7 +48,7 @@ actions:
     firehose_program: prog_firehose_ddr.elf
     # Combined boot chain (LUNs 1-5) + kernel (LUN 0, rootfs stripped):
     # rawprogram0-only-kernel = efi.bin only; rawprogram4-qupfw = qupfw slots
-    # populated with qupv3fw.elf. Matches flash-loader + flash-kernel together.
+    # populated with qupv3fw.elf. Matches flash-bootimage + flash-uki together.
     rawprogram: rawprogram0-only-kernel.xml rawprogram1.xml rawprogram2.xml rawprogram3.xml rawprogram4-qupfw.xml rawprogram5.xml
     patch: patch0.xml
     storage: ufs

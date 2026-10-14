@@ -143,11 +143,11 @@ make all</pre>
     <div class="step"><span class="num">4</span>
       <span class="title">Flash the board over USB <span class="hint">— device in EDL mode, qdl on PATH</span></span></div>
 <pre><span class="cmt"># first flash: full loader (tz.mbn + uefi.elf) + kernel</span>
-make flash-loader
-make flash-efi
+make flash-bootimage
+make flash-uki
 
 <span class="cmt"># kernel-only iteration afterwards — no loader re-flash</span>
-make flash-efi</pre>
+make flash-uki</pre>
   </div>
 
   <div class="section-head">
@@ -168,14 +168,14 @@ make flash-efi</pre>
 <pre><span class="cmt"># rebuild just the component you touched (incremental — seconds–minutes)</span>
 make optee-os        <span class="cmt"># or:  make tfa   /   make u-boot</span>
 make bootimage       <span class="cmt"># build uefi.elf + tz.mbn (BL2 signed with sectools)</span>
-make flash-loader    <span class="grn"># reflash the boot chain</span></pre>
+make flash-bootimage    <span class="grn"># reflash the boot chain</span></pre>
     </div>
     <div>
       <div class="label">Kernel change — Linux</div>
 <pre><span class="cmt"># rebuild the kernel (incremental — typically ~1–2 min)</span>
 make linux
 make uki             <span class="cmt"># repackage the EFI image / UKI (efi.bin)</span>
-make flash-efi    <span class="grn"># reflash the kernel partition only — firmware untouched</span></pre>
+make flash-uki    <span class="grn"># reflash the kernel partition only — firmware untouched</span></pre>
     </div>
   </div>
 

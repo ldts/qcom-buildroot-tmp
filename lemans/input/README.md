@@ -12,7 +12,7 @@ produced by the build system and must be placed here manually before use.
 
 ## Flash dependencies
 
-The `flash-loader` and `flash-kernel` make targets resolve each required file
+The `flash-bootimage` and `flash-uki` make targets resolve each required file
 in priority order:
 
 1. `lemans/input/` — manually placed or previously auto-copied
@@ -35,7 +35,7 @@ platform. Output goes to `lemans/blobs/`; flash targets pick it up automatically
 
 ---
 
-### `make flash-loader` (full partition flash)
+### `make flash-bootimage` (full partition flash)
 
 Flashes the complete boot partition layout across all UFS LUNs: XBL, TZ, UEFI,
 CDT, GPT tables, and sidecar firmware.  Requires `lemans/output/tz.mbn` and
@@ -95,7 +95,7 @@ Files resolved from `lemans/input/` (auto-copied from Yocto or `lemans/blobs/` i
 
 ---
 
-### `make flash-kernel` (EFI partition only)
+### `make flash-uki` (EFI partition only)
 
 Flashes `efi.bin` into the EFI partition without touching other partitions.
 Requires `lemans/output/efi.bin` — build it first with `make efi`.

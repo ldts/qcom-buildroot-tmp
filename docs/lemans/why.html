@@ -161,7 +161,7 @@
         <li><span>Component-level builds — rebuild only what changed</span></li>
         <li><span><code>make fetch-blobs</code> pulls Qualcomm firmware in <strong style="color:var(--green)">minutes</strong></span></li>
         <li><span>No Yocto recipe-parse overhead (10 000+ recipes)</span></li>
-        <li><span><code>make flash-kernel</code> for kernel-only iteration — no re-flash of firmware</span></li>
+        <li><span><code>make flash-uki</code> for kernel-only iteration — no re-flash of firmware</span></li>
       </ul>
     </div>
     <div class="card">
@@ -191,7 +191,7 @@
     <div class="arrow">→</div>
     <div class="chain-box grn"><div class="label">make all</div><div class="sub">build</div></div>
     <div class="arrow">→</div>
-    <div class="chain-box grn"><div class="label">make flash-loader</div><div class="sub">first flash</div></div>
+    <div class="chain-box grn"><div class="label">make flash-bootimage</div><div class="sub">first flash</div></div>
     <div class="arrow">→</div>
     <div class="chain-box hl"><div class="label">running board</div><div class="sub">&lt; 1 hour total</div></div>
   </div>

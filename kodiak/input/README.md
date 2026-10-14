@@ -11,7 +11,7 @@ produced by the build system and must be placed here manually before use.
 
 ## Flash dependencies
 
-The `flash-loader` and `flash-efi` make targets resolve each required file
+The `flash-bootimage` and `flash-uki` make targets resolve each required file
 in priority order:
 
 1. `kodiak/input/` — manually placed or previously auto-copied
@@ -34,7 +34,7 @@ platform. Output goes to `kodiak/blobs/`; flash targets pick it up automatically
 
 ---
 
-### `make flash-loader` (full partition flash)
+### `make flash-bootimage` (full partition flash)
 
 Flashes the complete boot partition layout: XBL, TZ, UEFI, GPT tables, and
 sidecar firmware.  Requires `kodiak/output/tz.mbn` and `kodiak/output/uefi.elf`
@@ -83,7 +83,7 @@ Files resolved from `kodiak/input/` (auto-copied from Yocto or `kodiak/blobs/` i
 
 ---
 
-### `make flash-efi` (EFI partition only)
+### `make flash-uki` (EFI partition only)
 
 Flashes `efi.bin` into the EFI partition without touching other partitions.
 Requires `kodiak/output/efi.bin` — build it first with `make uki`.

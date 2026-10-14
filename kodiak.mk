@@ -34,11 +34,11 @@
 #
 #   fetch-blobs    Download QCM6490 firmware blobs directly (no Yocto build)
 #   yocto          Clone meta-qcom and build the OE core-kit BSP image via kas
-#   flash-loader   Flash tz.mbn + uefi.elf via QDL (checks input/ → yocto → blobs)
-#   flash-efi      Flash the updated efi.bin via QDL (checks input/ → yocto → blobs)
+#   flash-bootimage   Flash tz.mbn + uefi.elf via QDL (checks input/ → yocto → blobs)
+#   flash-uki      Flash the updated efi.bin via QDL (checks input/ → yocto → blobs)
 #   flash-yocto    Flash the complete unmodified Yocto release image via QDL
 #   flash-lava     Package a combined loader + kernel tarball and flash a remote
-#                  lab board via LAVA (the counterpart of flash-loader+flash-efi)
+#                  lab board via LAVA (the counterpart of flash-bootimage+flash-uki)
 #   flash-lava-yocto  Package the COMPLETE Yocto release for LAVA (counterpart of
 #                  flash-yocto; includes rootfs.img)
 #   *-clean        Per-component clean targets
@@ -258,17 +258,17 @@ help:
 	@echo "  bootimage      Build uefi.elf (FIP) + tz.mbn (BL2 signed with sectools)"
 	@echo ""
 	@echo "Flash targets"
-	@echo "  flash-loader   Flash tz.mbn + uefi.elf via QDL"
+	@echo "  flash-bootimage  Flash tz.mbn + uefi.elf via QDL"
 	@echo "                 Missing files are auto-copied from the Yocto flash directory if present,"
 	@echo "                 otherwise run 'make yocto' or copy them manually to kodiak/input/"
-	@echo "  flash-efi      Flash efi.bin via QDL"
-	@echo "                 Same fallback logic as flash-loader for missing input files"
+	@echo "  flash-uki      Flash efi.bin via QDL"
+	@echo "                 Same fallback logic as flash-bootimage for missing input files"
 	@echo "  flash-yocto    Flash the complete unmodified Yocto release via QDL"
 	@echo "                 Programs every rawprogram*/patch* in the Yocto deploy dir"
 	@echo "  flash-lava     Package loader + kernel into a flat tarball and flash a"
 	@echo "                 remote lab board via LAVA instead of local USB QDL."
 	@echo "                 Output: kodiak/output/kodiak-flash.qcomflash.tar.gz"
-	@echo "                 (combines what flash-loader + flash-efi flash; no rootfs)"
+	@echo "                 (combines what flash-bootimage + flash-uki flash; no rootfs)"
 	@echo "  flash-lava-yocto  Package the COMPLETE Yocto release (all LUNs +"
 	@echo "                 rootfs.img) for LAVA (kodiak/output/kodiak-yocto.qcomflash.tar.gz);"
 	@echo "                 the LAVA counterpart of flash-yocto (needs 'make yocto')"
@@ -285,7 +285,7 @@ help:
 	@echo "                 Applies kodiak/patches/meta-qcom/ (adds fastrpc-tests to the image) before building"
 	@echo "                 Output: yocto/build/tmp/deploy/images/rb3gen2-core-kit/"
 	@echo "                 Copy {prog_firehose_ddr.elf,rawprogram*.xml,gpt_*.bin,patch0.xml}"
-	@echo "                 to kodiak/input/ before running flash-loader or flash-efi"
+	@echo "                 to kodiak/input/ before running flash-bootimage or flash-uki"
 	@echo "  yocto-clean    Remove the cloned meta-qcom directory"
 	@echo ""
 	@echo "Clean targets"
@@ -604,11 +604,11 @@ bootimage-clean: tfa-clean optee-os-clean u-boot-clean
 #   cp $(YOCTO_DEPLOY)/{prog_firehose_ddr.elf,rawprogram*.xml,\
 #      gpt_main0.bin,gpt_backup0.bin,patch0.xml} kodiak/input/
 #
-#   flash-loader   Flashes the full loader image (tz.mbn + uefi.elf) via QDL.
+#   flash-bootimage   Flashes the full loader image (tz.mbn + uefi.elf) via QDL.
 #                  Requires kodiak/output/{tz.mbn,uefi.elf} — run 'make bootimage'
 #                  first; the target errors if they are absent.
 #
-#   flash-efi      Flashes only the EFI partition (efi.bin / UKI) via QDL.
+#   flash-uki      Flashes only the EFI partition (efi.bin / UKI) via QDL.
 #                  Requires kodiak/output/efi.bin — run 'make uki' first; the
 #                  target errors if it is absent.  Kernel-only update, without
 #                  reflashing the loader.  rawprogram0-only-kernel.xml is
@@ -618,15 +618,15 @@ bootimage-clean: tfa-clean optee-os-clean u-boot-clean
 #   flash-lava     Packages the loader + kernel sets into a single flat tarball
 #                  (kodiak/output/kodiak-flash.qcomflash.tar.gz) and flashes a
 #                  REMOTE lab board via LAVA — the counterpart of running
-#                  flash-loader + flash-efi together over USB.  See kodiak/lava/.
+#                  flash-bootimage + flash-uki together over USB.  See kodiak/lava/.
 #   flash-lava-yocto  The LAVA counterpart of flash-yocto: packages the complete
 #                  Yocto release (incl. rootfs.img) as a flat tarball
 #                  (kodiak/output/kodiak-yocto.qcomflash.tar.gz) and flashes it
 #                  to a remote lab board.
 ################################################################################
-.PHONY: flash-loader flash-efi
+.PHONY: flash-bootimage flash-uki
 
-flash-loader:
+flash-bootimage:
 	@if [ ! -f "$(CURDIR)/kodiak/output/tz.mbn" ] || \
 	    [ ! -f "$(CURDIR)/kodiak/output/uefi.elf" ]; then \
 		echo "ERROR: kodiak/output/tz.mbn and/or kodiak/output/uefi.elf not found"; \
@@ -686,7 +686,7 @@ flash-loader:
 	cd $(CURDIR)/kodiak/output && \
 		qdl --debug prog_firehose_ddr.elf rawprogram4.xml rawprogram1.xml rawprogram2.xml
 
-flash-efi:
+flash-uki:
 	@if [ ! -f "$(CURDIR)/kodiak/output/efi.bin" ]; then \
 		echo "ERROR: kodiak/output/efi.bin not found"; \
 		echo "       Run 'make uki' first to build the UKI image."; \
@@ -971,7 +971,7 @@ fetch-blobs-clean:
 #   yocto/build/tmp/deploy/images/rb3gen2-core-kit/
 #
 # The deploy directory contains all files needed by the flash targets.  Copy
-# them into kodiak/input/ so that flash-loader and flash-efi can find them:
+# them into kodiak/input/ so that flash-bootimage and flash-uki can find them:
 #
 #   cp $(YOCTO_DEPLOY)/{prog_firehose_ddr.elf,rawprogram*.xml,\
 #      gpt_main0.bin,gpt_backup0.bin,patch0.xml} kodiak/input/
@@ -1022,7 +1022,7 @@ yocto:
 	@echo "Flash artifacts are at:"
 	@echo "  $(YOCTO_DEPLOY)"
 	@echo ""
-	@echo "Copy them to kodiak/input/ before running flash-loader or flash-efi:"
+	@echo "Copy them to kodiak/input/ before running flash-bootimage or flash-uki:"
 	@echo "  cp \$(YOCTO_DEPLOY)/{prog_firehose_ddr.elf,rawprogram*.xml,gpt_main0.bin,gpt_backup0.bin,patch0.xml} \$(CURDIR)/kodiak/input/"
 	@echo ""
 
@@ -1034,7 +1034,7 @@ yocto:
 # patch XML the release ships is programmed (RB3 Gen2 uses LUNs 0,1,2,4), so the
 # set adapts to whatever is present in the deploy directory.
 #
-# NOTE: this overwrites whatever 'make flash-loader' / 'make flash-efi'
+# NOTE: this overwrites whatever 'make flash-bootimage' / 'make flash-uki'
 # installed.  Re-run those afterward to restore your custom build.
 flash-yocto:
 	@if [ ! -f "$(YOCTO_FLASH)/prog_firehose_ddr.elf" ]; then \
@@ -1048,13 +1048,13 @@ flash-yocto:
 ################################################################################
 # flash-lava — Flash the loader + kernel to a lab board via LAVA (not USB).
 #
-# flash-loader/flash-efi run qdl over USB against a board plugged into THIS
+# flash-bootimage/flash-uki run qdl over USB against a board plugged into THIS
 # machine. The LAVA lab boards are remote and not USB-reachable from here, so
 # LAVA cannot run that qdl directly. Instead LAVA fetches a single flat tarball
 # over HTTP onto its worker and runs qdl there (deploy: to: qdl + boot:
 # method: qdl, storage: ufs). This target assembles exactly that tarball,
-# uniting both flash sets so one LAVA job flashes what 'flash-loader' and
-# 'flash-efi' would flash together:
+# uniting both flash sets so one LAVA job flashes what 'flash-bootimage' and
+# 'flash-uki' would flash together:
 #
 #   LUN1,2,4 (loader): firehose, rawprogram1/2/4 (dtb.bin stripped), boot FW,
 #            GPTs, built tz.mbn + uefi.elf, qupv3fw.elf
@@ -1073,7 +1073,7 @@ flash-yocto:
 # submitting/monitoring the LAVA job is done separately (e.g. via the LAVA MCP),
 # because this host has no artifact web-host or LAVA credentials.
 #
-# NOTE: like flash-loader/flash-efi, this set does NOT include rootfs.img.
+# NOTE: like flash-bootimage/flash-uki, this set does NOT include rootfs.img.
 # A LAVA job that boots to a login prompt only succeeds if a rootfs is already
 # present on the board's rootfs partition (this only reflashes loader + kernel).
 #
@@ -1121,7 +1121,7 @@ flash-lava: flash-lava-package
 	$(CURDIR)/kodiak/lava/submit.sh $(FLASH_LAVA_TARBALL) $(FLASH_LAVA_JOB)
 
 flash-lava-package: $(BLOBS_STAMP)
-	@# Built boot-chain + kernel artifacts must exist (mirrors flash-loader/flash-efi guards).
+	@# Built boot-chain + kernel artifacts must exist (mirrors flash-bootimage/flash-uki guards).
 	@if [ ! -f "$(CURDIR)/kodiak/output/tz.mbn" ] || \
 	    [ ! -f "$(CURDIR)/kodiak/output/uefi.elf" ]; then \
 		echo "ERROR: kodiak/output/tz.mbn and/or kodiak/output/uefi.elf not found"; \
@@ -1153,9 +1153,9 @@ flash-lava-package: $(BLOBS_STAMP)
 		fi; \
 	done
 	@# The DTB is embedded in uki.efi, so drop the dtb.bin partition entries;
-	@# otherwise qdl aborts trying to open dtb.bin (as flash-loader does).
+	@# otherwise qdl aborts trying to open dtb.bin (as flash-bootimage does).
 	@sed -i '/filename="dtb\.bin"/d' $(FLASH_LAVA_DIR)/rawprogram4.xml
-	@# Kernel-only rawprogram0: keep only the efi.bin partition entry (as flash-efi),
+	@# Kernel-only rawprogram0: keep only the efi.bin partition entry (as flash-uki),
 	@# then drop the full rawprogram0.xml so only the -only-kernel variant ships.
 	@echo "Generating rawprogram0-only-kernel.xml (efi partition only)..."
 	@{ printf '<?xml version="1.0" ?>\n<data>\n'; \
@@ -1186,8 +1186,8 @@ flash-lava-package: $(BLOBS_STAMP)
 ################################################################################
 # flash-lava-yocto — Flash the COMPLETE Yocto release to a lab board via LAVA.
 #
-# The LAVA counterpart of 'flash-yocto', as flash-lava is of flash-loader +
-# flash-efi. Where flash-lava packages the loader + kernel only (no rootfs,
+# The LAVA counterpart of 'flash-yocto', as flash-lava is of flash-bootimage +
+# flash-uki. Where flash-lava packages the loader + kernel only (no rootfs,
 # LUN0 reduced to the efi partition), this packages the full unmodified Yocto
 # release exactly as flash-yocto flashes it: all LUNs INCLUDING rootfs.img, with
 # every patch, straight from the built .qcomflash directory.

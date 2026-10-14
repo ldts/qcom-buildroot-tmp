@@ -452,7 +452,7 @@
     </div>
     <div class="card" onclick="goTo('s-flash')" style="cursor:pointer;padding:12px 14px">
       <h3 style="font-size:13px;margin-bottom:3px">Flashing</h3>
-      <p style="font-size:11px;color:var(--muted)">QDL / Firehose · flash-loader vs flash-kernel</p>
+      <p style="font-size:11px;color:var(--muted)">QDL / Firehose · flash-bootimage vs flash-uki</p>
     </div>
     <div class="card" onclick="goTo('s-lava')" style="cursor:pointer;padding:12px 14px">
       <h3 style="font-size:13px;margin-bottom:3px">Flashing via LAVA</h3>
@@ -599,7 +599,7 @@
     <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-bottom:8px">
       <code style="color:var(--accent);font-size:13px">make bootimage</code>
       <span style="margin:0 8px">—</span>Bootloader pipeline<span style="margin:0 8px">→</span>
-      <code style="color:var(--red);font-size:13px">make flash-loader</code>
+      <code style="color:var(--red);font-size:13px">make flash-bootimage</code>
     </div>
     <div class="chain" style="margin-bottom:4px">
       <div class="chain-box grn"><div class="cb-label">U-Boot SPL</div><div class="cb-sub">u-boot-spl.elf</div></div>
@@ -607,7 +607,7 @@
       <div class="chain-box hl" style="min-width:150px"><div class="cb-label">make spl</div><div class="cb-sub">SWIV + qtestsign<br>→ tz.mbn</div></div>
       <div class="arrow">→</div>
       <div class="chain-box" style="border-color:var(--red);background:#fbecec;min-width:130px">
-        <div class="cb-label" style="color:var(--red)">make flash-loader</div>
+        <div class="cb-label" style="color:var(--red)">make flash-bootimage</div>
         <div class="cb-sub">QDL / Firehose</div>
       </div>
     </div>
@@ -621,7 +621,7 @@
       <div class="chain-box hl" style="min-width:150px"><div class="cb-label">make uefi</div><div class="cb-sub">SPL_ATF FIT<br>→ uefi.elf</div></div>
       <div class="arrow">→</div>
       <div class="chain-box" style="border-color:var(--red);background:#fbecec;min-width:130px">
-        <div class="cb-label" style="color:var(--red)">make flash-loader</div>
+        <div class="cb-label" style="color:var(--red)">make flash-bootimage</div>
         <div class="cb-sub">QDL / Firehose</div>
       </div>
     </div>
@@ -629,7 +629,7 @@
     <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-top:18px;margin-bottom:8px">
       <code style="color:var(--accent);font-size:13px">make uki</code>
       <span style="margin:0 8px">—</span>Kernel + Root pipeline<span style="margin:0 8px">→</span>
-      <code style="color:var(--red);font-size:13px">make flash-kernel</code>
+      <code style="color:var(--red);font-size:13px">make flash-uki</code>
     </div>
     <div class="chain">
       <div class="chain-box yel"><div class="cb-label">Linux</div><div class="cb-sub">Image · el2.dtb</div></div>
@@ -639,7 +639,7 @@
       <div class="chain-box hl"><div class="cb-label">make efi</div><div class="cb-sub">uki.efi → efi.bin</div></div>
       <div class="arrow">→</div>
       <div class="chain-box" style="border-color:var(--red);background:#fbecec;min-width:130px">
-        <div class="cb-label" style="color:var(--red)">make flash-kernel</div>
+        <div class="cb-label" style="color:var(--red)">make flash-uki</div>
         <div class="cb-sub">QDL / Firehose</div>
       </div>
     </div>
@@ -676,7 +676,7 @@
       <tr style="background:#e7f2fa;outline:1px solid var(--accent)">
         <td>
           <code style="color:var(--accent);font-size:13px">bootimage</code>
-          <span class="badge blue" style="margin-left:4px;vertical-align:middle">→ flash-loader</span>
+          <span class="badge blue" style="margin-left:4px;vertical-align:middle">→ flash-bootimage</span>
         </td>
         <td>
           <strong style="color:var(--text)">tz.mbn</strong>
@@ -689,7 +689,7 @@
       <tr style="background:#e7f2fa;outline:1px solid var(--accent)">
         <td>
           <code style="color:var(--accent);font-size:13px">uki</code>
-          <span class="badge blue" style="margin-left:4px;vertical-align:middle">→ flash-kernel</span>
+          <span class="badge blue" style="margin-left:4px;vertical-align:middle">→ flash-uki</span>
         </td>
         <td>
           <strong style="color:var(--text)">efi.bin</strong>
@@ -698,12 +698,12 @@
         <td class="muted">UKI bundles kernel + initramfs + DTB + cmdline into one EFI binary.</td>
       </tr>
       <tr>
-        <td><code style="color:var(--red)">flash-loader</code></td>
+        <td><code style="color:var(--red)">flash-bootimage</code></td>
         <td class="muted">Programs <strong style="color:var(--text)">tz.mbn + uefi.elf</strong> + Qualcomm blobs via QDL/Firehose (LUNs 1-5)</td>
         <td class="muted">After any OP-TEE / TF-A / U-Boot change; needs <code>bootimage</code></td>
       </tr>
       <tr>
-        <td><code style="color:var(--red)">flash-kernel</code></td>
+        <td><code style="color:var(--red)">flash-uki</code></td>
         <td class="muted">Programs <strong style="color:var(--text)">efi.bin</strong> (EFI partition only, LUN 0) via QDL</td>
         <td class="muted">Fast iteration — skips firmware; needs <code>uki</code></td>
       </tr>
@@ -781,7 +781,7 @@
       <tr>
         <td><code style="color:var(--accent)">efi-kernel-only</code></td>
         <td class="muted">efi.bin with a local-kernel UKI (<code>root=PARTLABEL=rootfs</code>)</td>
-        <td class="muted">Boots the on-disk Yocto rootfs; needs <code>flash-yocto</code>. Flash with <code>flash-kernel</code>.</td>
+        <td class="muted">Boots the on-disk Yocto rootfs; needs <code>flash-yocto</code>. Flash with <code>flash-uki</code>.</td>
       </tr>
       <tr>
         <td><code style="color:var(--green)">fetch-blobs</code></td>
@@ -1229,7 +1229,7 @@ pd_ignore_unused</pre>
         <div class="arrow">→</div>
         <div class="chain-box hl"><div class="cb-label">mkfs.fat</div><div class="cb-sub">+ mcopy</div></div>
         <div class="arrow">→</div>
-        <div class="chain-box" style="border-color:var(--red);background:#fbecec"><div class="cb-label" style="color:var(--red)">efi.bin</div><div class="cb-sub">→ flash-kernel</div></div>
+        <div class="chain-box" style="border-color:var(--red);background:#fbecec"><div class="cb-label" style="color:var(--red)">efi.bin</div><div class="cb-sub">→ flash-uki</div></div>
       </div>
     </div>
 
@@ -1251,15 +1251,15 @@ pd_ignore_unused</pre>
   </p>
   <div class="card-grid cols2" style="max-width:860px">
     <div class="card" style="border-color:var(--red)">
-      <h3 style="color:var(--red)">make flash-loader</h3>
+      <h3 style="color:var(--red)">make flash-bootimage</h3>
       <p style="margin-bottom:8px; line-height:1.6">
         Programs the <strong style="color:var(--text)">full bootloader stack</strong>: firmware blobs,
         XBL, GPT tables, U-Boot SPL (tz.mbn), and the SPL_ATF boot FIT (uefi.elf, carrying TF-A BL31 + OP-TEE + U-Boot proper). Programs LUNs 1–5 (rawprogram1–5, with rawprogram4 patched to fill the qupfw slots).
       </p>
-      <p style="font-size:12px; color:var(--muted)">Use after a full rebuild, first-time provisioning, or any U-Boot SPL / OP-TEE change. Follow with <code>make flash-kernel</code> to also write the kernel.</p>
+      <p style="font-size:12px; color:var(--muted)">Use after a full rebuild, first-time provisioning, or any U-Boot SPL / OP-TEE change. Follow with <code>make flash-uki</code> to also write the kernel.</p>
     </div>
     <div class="card" style="border-color:var(--yellow)">
-      <h3 style="color:var(--yellow)">make flash-kernel</h3>
+      <h3 style="color:var(--yellow)">make flash-uki</h3>
       <p style="margin-bottom:8px; line-height:1.6">
         Programs <strong style="color:var(--text)">only the EFI partition</strong> (efi.bin).
         Generates a filtered <code>rawprogram0-only-kernel.xml</code>
@@ -1273,7 +1273,7 @@ pd_ignore_unused</pre>
         Builds a UKI from the <strong style="color:var(--text)">locally-built kernel</strong> (no initramfs) with
         <code>root=PARTLABEL=rootfs rw rootwait</code> and injects it into a copy of the Yocto
         <code>efi.bin</code> (replacing its stock UKI). Build only — flash the result with
-        <code>make flash-kernel</code>.
+        <code>make flash-uki</code>.
       </p>
       <p style="font-size:12px; color:var(--muted)">Boots the <strong>on-disk Yocto rootfs</strong> with your own kernel — unlike <code>make uki</code>, which boots the Buildroot initramfs. The matching Yocto <code>rootfs.img</code> must already be flashed (<code>make flash-yocto</code>).</p>
     </div>
@@ -1282,7 +1282,7 @@ pd_ignore_unused</pre>
       <p style="margin-bottom:8px; line-height:1.6">
         Programs the <strong style="color:var(--text)">SAIL safety-island NOR image</strong>.
         SAIL boots from its own NOR flash, wholly independent of the UFS boot chain that
-        <code>flash-loader</code> / <code>flash-kernel</code> program. Runs a
+        <code>flash-bootimage</code> / <code>flash-uki</code> program. Runs a
         <strong style="color:var(--text)">self-contained stock blob set</strong> (its own firehose,
         <code>rawprogram0.xml</code> / <code>patch0.xml</code>, payload ELFs) straight from
         <code>lemans/blobs/</code> — no local build artifacts, no staging into <code>lemans/output/</code>.
@@ -1303,7 +1303,7 @@ pd_ignore_unused</pre>
   <div class="card" style="max-width:860px; margin-top:16px">
     <h3>Flash Artifacts — Source</h3>
     <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:10px">
-      <code>flash-loader</code> / <code>flash-kernel</code> stage every stock firmware file
+      <code>flash-bootimage</code> / <code>flash-uki</code> stage every stock firmware file
       <strong style="color:var(--text)">strictly from the fetched blob set</strong> — no Yocto or
       hand-placed copy can shadow them. Built images come from the local output:
     </p>
@@ -1348,7 +1348,7 @@ pd_ignore_unused</pre>
       <div class="step-num">4</div>
       <div class="step-body">
         <strong>Flash partition images via rawprogram XML</strong>
-        <span>The XML manifests map each image file to a partition. <code>flash-loader</code> uses rawprogram1–5 (LUNs 1–5); <code>flash-kernel</code> uses only the filtered rawprogram0-only-kernel.xml.</span>
+        <span>The XML manifests map each image file to a partition. <code>flash-bootimage</code> uses rawprogram1–5 (LUNs 1–5); <code>flash-uki</code> uses only the filtered rawprogram0-only-kernel.xml.</span>
       </div>
     </li>
     <li>
@@ -1367,7 +1367,7 @@ pd_ignore_unused</pre>
 <section id="s-lava" data-sec data-sec-title="Flashing via LAVA">
   <h2>Flashing via LAVA <span style="color:var(--accent);font-weight:400;font-size:.6em">remote lab boards — no local USB</span></h2>
   <p style="font-size:14px; color:var(--muted); margin-bottom:24px; max-width:760px; text-align:center">
-    <code>flash-loader</code> / <code>flash-kernel</code> run <code>qdl</code> over USB against a board
+    <code>flash-bootimage</code> / <code>flash-uki</code> run <code>qdl</code> over USB against a board
     plugged into <strong style="color:var(--text)">your</strong> machine. The
     <a href="https://lava.infra.foundries.io/" style="color:var(--accent)">LAVA</a> lab boards are remote
     and not USB-reachable, so LAVA fetches a single flat flash <strong style="color:var(--text)">tarball</strong>
@@ -1380,7 +1380,7 @@ pd_ignore_unused</pre>
     <div class="card" style="border-color:var(--accent)">
       <h3 style="color:var(--accent)">make flash-lava</h3>
       <p style="margin-bottom:8px; line-height:1.6">
-        The LAVA counterpart of <code>flash-loader</code> + <code>flash-kernel</code> <strong style="color:var(--text)">combined</strong>.
+        The LAVA counterpart of <code>flash-bootimage</code> + <code>flash-uki</code> <strong style="color:var(--text)">combined</strong>.
         Packages one flat <code>lemans-flash.qcomflash.tar.gz</code> uniting both sets:
         LUNs 1–5 (boot chain: firehose, XBL, GPTs, <code>tz.mbn</code>, <code>uefi.elf</code>,
         <code>rawprogram4-qupfw</code>) and LUN 0 (kernel: <code>rawprogram0-only-kernel</code>, <code>efi.bin</code>).
@@ -1740,7 +1740,7 @@ pd_ignore_unused</pre>
           <li><span>Clones <code>qualcomm-linux/meta-qcom</code> from GitHub</span></li>
           <li><span>Builds via <code>kas</code> using <code>iq-9075-evk.yml</code></span></li>
           <li><span>Produces <code>yocto/build/tmp/deploy/images/iq-9075-evk/</code></span></li>
-          <li><span>Consumed only by <code>make flash-yocto</code> — <code>flash-loader</code>/<code>flash-kernel</code> never read from here</span></li>
+          <li><span>Consumed only by <code>make flash-yocto</code> — <code>flash-bootimage</code>/<code>flash-uki</code> never read from here</span></li>
         </ul>
         <p style="font-size:12px; color:var(--muted); margin-top:8px">Use <code style="color:var(--green)">make fetch-blobs</code> instead to skip the build entirely.</p>
         <p style="font-size:12px; margin-top:10px; padding:8px 10px; border-left:3px solid var(--red); background:rgba(200,60,60,.06); line-height:1.6">
@@ -1783,7 +1783,7 @@ pd_ignore_unused</pre>
   <p style="font-size:13px; color:var(--muted); margin-bottom:20px; max-width:800px; text-align:center">
     Both upstream URLs are <strong style="color:var(--green)">publicly accessible</strong> — no Qualcomm account required.
     <code style="color:var(--accent)">make fetch-blobs</code> automates all three steps below and populates
-    <code>lemans/blobs/</code>, which <code>flash-loader</code>/<code>flash-kernel</code> stage from exclusively.
+    <code>lemans/blobs/</code>, which <code>flash-bootimage</code>/<code>flash-uki</code> stage from exclusively.
   </p>
   <div class="card-grid cols2" style="max-width:960px; margin-bottom:16px">
     <div class="card">
@@ -1877,12 +1877,12 @@ $(eval $(cmake-package))</pre>
       <div class="card">
         <h3>Build &amp; flash</h3>
         <pre style="font-size:11px; padding:8px 12px"><span class="cmt"># Full rootfs rebuild:</span>
-<span class="fn">make</span> buildroot efi flash-kernel
+<span class="fn">make</span> buildroot efi flash-uki
 
 <span class="cmt"># Rebuild just one package:</span>
 <span class="fn">make</span> -C ../buildroot O=$(ROOT)/out-br \
     mypkg-rebuild
-<span class="fn">make</span> efi flash-kernel</pre>
+<span class="fn">make</span> efi flash-uki</pre>
       </div>
     </div>
   </div>
@@ -1963,8 +1963,8 @@ exec 3<span class="val">&lt;&gt;</span> /dev/video0 ; exec 3<span class="val">&g
     <div class="card">
       <h3>Flash</h3>
       <ul>
-        <li><span><code>make flash-loader</code> — full bootloader provisioning (rawprogram 1–5)</span></li>
-        <li><span><code>make flash-kernel</code> — EFI partition only (fast iteration)</span></li>
+        <li><span><code>make flash-bootimage</code> — full bootloader provisioning (rawprogram 1–5)</span></li>
+        <li><span><code>make flash-uki</code> — EFI partition only (fast iteration)</span></li>
         <li><span>Uses QDL / Firehose protocol over USB in EDL mode</span></li>
         <li><span>Stock firmware: staged strictly from <code>make fetch-blobs</code> (<code>lemans/blobs/</code>)</span></li>
       </ul>

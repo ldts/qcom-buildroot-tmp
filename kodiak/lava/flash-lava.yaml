@@ -45,7 +45,7 @@ actions:
     firehose_program: prog_firehose_ddr.elf
     # Combined loader (LUNs 1,2,4) + kernel (LUN 0, efi partition only):
     # rawprogram0-only-kernel = efi.bin only; rawprogram4 has the dtb.bin entry
-    # stripped (the DTB is embedded in uki.efi). Matches flash-loader + flash-efi
+    # stripped (the DTB is embedded in uki.efi). Matches flash-bootimage + flash-uki
     # together.
     rawprogram: rawprogram0-only-kernel.xml rawprogram1.xml rawprogram2.xml rawprogram4.xml
     patch: patch0.xml

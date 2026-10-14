@@ -396,14 +396,14 @@ make efi             <span class="grn"># efi.bin — kernel UKI + Buildroot root
 make fetch-blobs
 
 <span class="cmt"># flash the full boot chain (LUNs 1–5) once, then the kernel (LUN 0)</span>
-make flash-loader
-make flash-kernel</pre>
+make flash-bootimage
+make flash-uki</pre>
     </div>
 
     <div>
       <div class="label">Kernel-only iteration — afterwards</div>
 <pre><span class="cmt"># reflash just efi.bin — no loader re-flash needed</span>
-make flash-kernel</pre>
+make flash-uki</pre>
     </div>
   </div>
   </div>
@@ -476,9 +476,9 @@ scp -r lemans/output/edl-package <span class="accent">user@winbox</span>:C:/edl-
       device</strong> — rootfs, firmware, GPT, all of it. It is not part of a
       routine flash. Run it <strong>only</strong> when a firmware upgrade or flash
       gone wrong has broken the on-device partition (LUN) layout, so that a normal
-      <code>make flash-loader</code> / <code>make flash-kernel</code> no longer
+      <code>make flash-bootimage</code> / <code>make flash-uki</code> no longer
       succeeds. After it completes, re-flash from scratch with
-      <code>make flash-loader &amp;&amp; make flash-kernel</code>.
+      <code>make flash-bootimage &amp;&amp; make flash-uki</code>.
     </span>
   </div>
 
@@ -503,8 +503,8 @@ scp -r lemans/output/edl-package <span class="accent">user@winbox</span>:C:/edl-
 make flash-ufs-provision
 
 <span class="cmt"># then rebuild the device from a clean slate</span>
-make flash-loader
-make flash-kernel</pre>
+make flash-bootimage
+make flash-uki</pre>
     </div>
 
     <div>
@@ -533,7 +533,7 @@ make flash-ufs-provision <span class="accent">UFS_PROVISION_XML=provision_1_1.xm
 <pre><span class="cmt"># rebuild just the component you touched (incremental — seconds–minutes)</span>
 make optee-os        <span class="cmt"># or:  make u-boot  /  make spl</span>
 make bootimage       <span class="cmt"># repackage the signed boot image (tz.mbn + uefi.elf)</span>
-make flash-loader    <span class="grn"># reflash the boot chain</span></pre>
+make flash-bootimage    <span class="grn"># reflash the boot chain</span></pre>
     </div>
 
     <div>
@@ -541,7 +541,7 @@ make flash-loader    <span class="grn"># reflash the boot chain</span></pre>
 <pre><span class="cmt"># rebuild the kernel (incremental — typically ~1–2 min)</span>
 make linux
 make efi             <span class="cmt"># repackage the EFI image / UKI (efi.bin)</span>
-make flash-kernel    <span class="grn"># reflash the kernel partition only — firmware untouched</span></pre>
+make flash-uki    <span class="grn"># reflash the kernel partition only — firmware untouched</span></pre>
     </div>
   </div>
 
@@ -590,7 +590,7 @@ make yocto</pre>
 <pre><span class="cmt"># flashes the pristine BSP: bootloader, firmware, efi.bin + rootfs.img.</span>
 make flash-yocto
 
-<span class="cmt"># NOTE: this overwrites whatever flash-loader / flash-kernel installed.</span>
+<span class="cmt"># NOTE: this overwrites whatever flash-bootimage / flash-uki installed.</span>
 <span class="cmt"># Re-run those afterward to restore your custom build.</span></pre>
       </div>
     </div>
@@ -624,7 +624,7 @@ make flash-yocto
 <pre><span class="cmt"># wraps the freshly-built kernel in an efi.bin that boots the</span>
 <span class="cmt"># on-disk Yocto rootfs (root=PARTLABEL=rootfs).</span>
 make efi-kernel-only
-make flash-kernel    <span class="grn"># reflash efi.bin only — Yocto rootfs untouched</span></pre>
+make flash-uki    <span class="grn"># reflash efi.bin only — Yocto rootfs untouched</span></pre>
       </div>
     </div>
 

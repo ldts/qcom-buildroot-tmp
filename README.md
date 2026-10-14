@@ -28,13 +28,13 @@ make -f lemans.mk fetch-blobs   # fast: direct download (minutes)
 make -f lemans.mk yocto         # full OE/Yocto BSP build (hours)
 
 # Flash
-make -f lemans.mk flash-loader  # bootloader chain (first-time / after TF-A change)
-make -f lemans.mk flash-kernel  # EFI partition only (kernel/initramfs iteration)
+make -f lemans.mk flash-bootimage  # bootloader chain (first-time / after TF-A change)
+make -f lemans.mk flash-uki        # EFI partition only (kernel/initramfs iteration)
 ```
 
 ## Firmware blobs
 
-Both `flash-loader` and `flash-kernel` need Qualcomm-proprietary firmware
+Both `flash-bootimage` and `flash-uki` need Qualcomm-proprietary firmware
 binaries (XBL, AOP, firehose programmer, GPT tables, rawprogram XMLs).
 These are resolved in priority order:
 

@@ -38,8 +38,8 @@
 #   fetch-blobs    Download QCS9100 firmware blobs directly (no Yocto build)
 #   yocto          Clone meta-qcom and build the OE no-distro BSP image via kas
 #   flash-yocto    Flash the complete unmodified Yocto release image (all 6 LUNs)
-#   flash-loader   Flash the boot chain via QDL (stock FW from fetched blobs; tz/uefi from build)
-#   flash-kernel   Flash the updated efi.bin via QDL  (efi.bin from build; LUN0 tables from blobs)
+#   flash-bootimage   Flash the boot chain via QDL (stock FW from fetched blobs; tz/uefi from build)
+#   flash-uki   Flash the updated efi.bin via QDL  (efi.bin from build; LUN0 tables from blobs)
 #   flash-sail     Flash the SAIL safety-island NOR image via QDL (stock blobs, self-contained)
 #   flash-sail-wipe      Wipe the SAIL NOR partition tables (recovery; destroys SAIL NOR layout)
 #   flash-ufs-provision  Re-provision the UFS LUN layout (recover partitions broken by a bad flash)
@@ -274,8 +274,8 @@ help:
 	@echo "                   tz.mbn    signed U-Boot SPL          (tz partition)"
 	@echo "                   uefi.elf  SPL_ATF FIT: BL31+OP-TEE+U-Boot (uefi part.)"
 	@echo "  uki            Build kernel UKI + rootfs → lemans/output/efi.bin (LUN 0)"
-	@echo "  flash-loader   Flash the boot chain via QDL (LUNs 1-5; needs bootimage)"
-	@echo "  flash-kernel   Flash efi.bin via QDL (LUN 0; needs uki)"
+	@echo "  flash-bootimage  Flash the boot chain via QDL (LUNs 1-5; needs bootimage)"
+	@echo "  flash-uki      Flash efi.bin via QDL (LUN 0; needs uki)"
 	@echo "  flash-lava     Package a combined boot-chain + kernel tarball for LAVA"
 	@echo "                 (lemans/output/lemans-flash.qcomflash.tar.gz); flash a"
 	@echo "                 remote lab board via LAVA instead of local USB QDL."
@@ -286,8 +286,8 @@ help:
 	@echo "                 the LAVA counterpart of flash-yocto (needs 'make yocto')"
 	@echo ""
 	@echo "  Typical rebuild + flash:"
-	@echo "    make bootimage && make flash-loader     # boot chain"
-	@echo "    make uki       && make flash-kernel     # kernel + rootfs"
+	@echo "    make bootimage && make flash-bootimage     # boot chain"
+	@echo "    make uki       && make flash-uki     # kernel + rootfs"
 	@echo "    make bootimage uki && make flash-lava   # both, packaged for LAVA"
 	@echo ""
 	@echo "════════════════════════════════════════════════════════════════════════"
@@ -341,7 +341,7 @@ help:
 	@echo "════════════════════════════════════════════════════════════════════════"
 	@echo "  fetch-blobs    Download QCS9100 firmware blobs directly — no Yocto build needed"
 	@echo "                 Sources: softwarecenter.qualcomm.com + codelinaro.org + qcom-ptool"
-	@echo "                 Output: lemans/blobs/  (flash-loader/flash-kernel stage from here exclusively)"
+	@echo "                 Output: lemans/blobs/  (flash-bootimage/flash-uki stage from here exclusively)"
 	@echo "  fetch-blobs-clean  Remove lemans/blobs/"
 	@echo ""
 	@echo "════════════════════════════════════════════════════════════════════════"
@@ -803,7 +803,7 @@ uki-clean:
 # Builds a UKI from the locally-built kernel (no initramfs) whose command line
 # mounts the on-disk Yocto rootfs partition (root=PARTLABEL=rootfs) and injects
 # it into a copy of the Yocto efi.bin (replacing its stock UKI). Flash the
-# result with 'make flash-kernel' (efi.bin only — rootfs.img untouched).
+# result with 'make flash-uki' (efi.bin only — rootfs.img untouched).
 #
 # Unlike 'uki' (which boots the Buildroot initramfs from a freshly-built
 # efi.bin), this reuses the Yocto efi.bin and boots the on-disk Yocto rootfs, so
@@ -847,7 +847,7 @@ efi-kernel-only: linux
 BLOBS_VERSION  = 00132
 BLOBS_DIR      = $(CURDIR)/lemans/blobs
 # Keyed to BLOBS_VERSION: bumping the version invalidates the stamp, so
-# fetch-blobs (and anything depending on it, e.g. flash-loader) re-fetches the
+# fetch-blobs (and anything depending on it, e.g. flash-bootimage) re-fetches the
 # new drop instead of no-op'ing on a stale stamp.
 BLOBS_STAMP    = $(BLOBS_DIR)/.fetch-complete-$(BLOBS_VERSION)
 # SAIL (safety-island) NOR flash set — a self-contained sub-tree of the boot-
@@ -903,7 +903,7 @@ endef
 
 # patch-qupfw: $(call patch-qupfw,<rawprogram4-src>,<rawprogram4-dst>)
 # Populate the empty qupfw_a/qupfw_b partition entries with qupv3fw.elf so
-# U-Boot can load the QUP GENI SE firmware (see flash-loader for the rationale).
+# U-Boot can load the QUP GENI SE firmware (see flash-bootimage for the rationale).
 define patch-qupfw
 	sed '/label="qupfw_[ab]"/ s/filename=""/filename="qupv3fw.elf"/' \
 	    "$(1)" > "$(2)"
@@ -949,14 +949,14 @@ lun-tables = gpt_main$(1).bin gpt_backup$(1).bin
 lun-raw    = rawprogram$(1).xml
 lun-patch  = patch$(1).xml
 
-# flash-loader: LUN1–5 boot chain from blobs/ (no patch XMLs; one zero-fill).
+# flash-bootimage: LUN1–5 boot chain from blobs/ (no patch XMLs; one zero-fill).
 LOADER_BLOB_FILES = \
 	$(FIREHOSE) \
 	$(foreach n,1 2 3 4 5,$(call lun-raw,$(n))) \
 	$(BOOT_FW_FILES) zeros_33sectors.bin \
 	$(foreach n,1 2 3 4 5,$(call lun-tables,$(n)))
 
-# flash-kernel: LUN0 only (kernel partition tables + rawprogram + patch).
+# flash-uki: LUN0 only (kernel partition tables + rawprogram + patch).
 KERNEL_BLOB_FILES = \
 	$(FIREHOSE) $(call lun-raw,0) $(call lun-tables,0) $(call lun-patch,0)
 
@@ -971,15 +971,15 @@ KERNEL_BLOB_FILES = \
 #   LUN 4 (rawprogram4): all main FW (tz.mbn, uefi.elf, aop, shrm, hyp, …)
 #   LUN 5 (rawprogram5): GPT only (no payload files)
 #
-#   flash-loader   Programs LUNs 1–5 (boot chain: XBL, SPL, U-Boot proper, supporting FW).
+#   flash-bootimage   Programs LUNs 1–5 (boot chain: XBL, SPL, U-Boot proper, supporting FW).
 #                  tz.mbn and uefi.elf come from lemans/output/ (built artifacts).
 #                  All other files are staged straight from the fetched blob set
 #                  (lemans/blobs/) into lemans/output/, overwriting — so the most
 #                  recently fetched blobs are always what gets flashed.
 #
-#   flash-kernel   Programs LUN 0 (efi.bin only; rootfs.img is stripped out).
+#   flash-uki   Programs LUN 0 (efi.bin only; rootfs.img is stripped out).
 ################################################################################
-.PHONY: flash-loader flash-kernel flash-sail flash-sail-wipe
+.PHONY: flash-bootimage flash-uki flash-sail flash-sail-wipe
 
 # LOADER_BLOB_FILES (defined above) is staged straight from the fetched blob set
 # (lemans/blobs/, produced by fetch-blobs). NOT included: tz.mbn + uefi.elf
@@ -987,7 +987,7 @@ KERNEL_BLOB_FILES = \
 # qupv3fw.elf (from linux-firmware). The blob rawprogram/GPT set is
 # self-consistent (ptool-generated, dtb.bin stripped), so no dtb.bin is needed.
 #
-# flash-loader depends on the fetch stamp so the blob set always exists and,
+# flash-bootimage depends on the fetch stamp so the blob set always exists and,
 # because the stamp is keyed to BLOBS_VERSION, is refreshed whenever the version
 # is bumped. Every file is staged from lemans/blobs/ into lemans/output/
 # (overwriting) so the most recently fetched blobs are unequivocally what gets
@@ -996,7 +996,7 @@ KERNEL_BLOB_FILES = \
 # The linux-firmware prerequisite stages qupv3fw.elf (QUP GENI SE firmware for
 # the qupfw_a/qupfw_b partitions) into $(FW_CLONE_DIR) — it is not part of the
 # boot-binaries blob drop, so without it the qupfw slots cannot be programmed.
-flash-loader: $(BLOBS_STAMP) linux-firmware
+flash-bootimage: $(BLOBS_STAMP) linux-firmware
 	$(call stage-blobs-strict,$(LOADER_BLOB_FILES))
 	@# Program the QUP GENI SE firmware into the qupfw_a/qupfw_b partitions.
 	@# U-Boot loads QUP firmware from the qupfw partition (GPT type-GUID
@@ -1034,11 +1034,11 @@ flash-loader: $(BLOBS_STAMP) linux-firmware
 # is NOT here — it comes from lemans/output/ (the 'make uki' UKI); rootfs.img is
 # stripped from the rawprogram so only the kernel partition is written.
 #
-# Mirrors flash-loader: stage straight from lemans/blobs/ into lemans/output/
+# Mirrors flash-bootimage: stage straight from lemans/blobs/ into lemans/output/
 # (overwriting) so the most recently fetched blobs are what flashes, and depend
 # on the version-keyed stamp so a BLOBS_VERSION bump re-fetches. efi.bin is left
 # as 'make uki' wrote it and flashed from lemans/output/.
-flash-kernel: $(BLOBS_STAMP)
+flash-uki: $(BLOBS_STAMP)
 	$(call stage-blobs-strict,$(KERNEL_BLOB_FILES))
 	@# Kernel-only rawprogram0: drop the rootfs.img entry so only efi.bin (LUN 0
 	@# kernel partition) is written; regenerated every run to track fresh blobs.
@@ -1055,13 +1055,13 @@ flash-kernel: $(BLOBS_STAMP)
 ################################################################################
 # flash-lava — Flash the boot chain + kernel to a lab board via LAVA (not USB).
 #
-# flash-loader/flash-kernel run qdl over USB against a board plugged into THIS
+# flash-bootimage/flash-uki run qdl over USB against a board plugged into THIS
 # machine. The LAVA lab boards are remote and not USB-reachable from here, so
 # LAVA cannot run that qdl directly. Instead LAVA fetches a single flat tarball
 # over HTTP onto its worker and runs qdl there (deploy: to: qdl + boot:
 # method: qdl, storage: ufs). This target assembles exactly that tarball,
-# uniting both flash sets so one LAVA job flashes what 'flash-loader' and
-# 'flash-kernel' would flash together:
+# uniting both flash sets so one LAVA job flashes what 'flash-bootimage' and
+# 'flash-uki' would flash together:
 #
 #   LUN1–5 (loader): firehose, rawprogram1/2/3/5, rawprogram4-qupfw (qupfw slots
 #           populated), boot FW, GPTs, built tz.mbn + uefi.elf, qupv3fw.elf
@@ -1079,7 +1079,7 @@ flash-kernel: $(BLOBS_STAMP)
 # submitting/monitoring the LAVA job is done separately (e.g. via the LAVA MCP),
 # because this host has no artifact web-host or LAVA credentials.
 #
-# NOTE: like flash-loader/flash-kernel, this set does NOT include rootfs.img.
+# NOTE: like flash-bootimage/flash-uki, this set does NOT include rootfs.img.
 # A LAVA job that boots to a login prompt only succeeds if a rootfs is already
 # present on the board's rootfs partition (this only reflashes boot + kernel).
 #
@@ -1120,10 +1120,10 @@ flash-lava: flash-lava-package
 
 flash-lava-package: $(BLOBS_STAMP) linux-firmware
 	@# Stage the full blob set for both flash paths into lemans/output/, exactly
-	@# as flash-loader + flash-kernel do (strict: hard error on any missing file).
+	@# as flash-bootimage + flash-uki do (strict: hard error on any missing file).
 	$(call stage-blobs-strict,$(LOADER_BLOB_FILES))
 	$(call stage-blobs-strict,$(KERNEL_BLOB_FILES))
-	@# Built boot-chain artifacts must exist (mirrors flash-loader's guards).
+	@# Built boot-chain artifacts must exist (mirrors flash-bootimage's guards).
 	@if [ ! -f "$(CURDIR)/lemans/output/tz.mbn" ]; then \
 		echo "ERROR: lemans/output/tz.mbn not found — run 'make bootimage' first"; \
 		echo "       (the signed U-Boot SPL is the tz partition image)"; \
@@ -1139,7 +1139,7 @@ flash-lava-package: $(BLOBS_STAMP) linux-firmware
 		echo "       (the UKI kernel image written to LUN 0)"; \
 		exit 1; \
 	fi
-	@# QUP GENI SE firmware (see flash-loader for the rationale).
+	@# QUP GENI SE firmware (see flash-bootimage for the rationale).
 	@if [ -f "$(FW_CLONE_DIR)/$(FW_SOC)/qupv3fw.elf" ]; then \
 		cp -f "$(FW_CLONE_DIR)/$(FW_SOC)/qupv3fw.elf" "$(CURDIR)/lemans/output/qupv3fw.elf"; \
 	else \
@@ -1149,10 +1149,10 @@ flash-lava-package: $(BLOBS_STAMP) linux-firmware
 	@# Assemble a clean flat directory for the tarball.
 	rm -rf $(FLASH_LAVA_DIR)
 	@mkdir -p $(FLASH_LAVA_DIR)
-	@# rawprogram4 with the qupfw_a/qupfw_b slots populated (as flash-loader).
+	@# rawprogram4 with the qupfw_a/qupfw_b slots populated (as flash-bootimage).
 	@echo "Patching rawprogram4 to populate qupfw_a/qupfw_b with qupv3fw.elf..."
 	@$(call patch-qupfw,$(CURDIR)/lemans/output/rawprogram4.xml,$(FLASH_LAVA_DIR)/rawprogram4-qupfw.xml)
-	@# rawprogram0 with rootfs stripped so only efi.bin is written (as flash-kernel).
+	@# rawprogram0 with rootfs stripped so only efi.bin is written (as flash-uki).
 	@echo "Generating rawprogram0-only-kernel.xml (efi only, no rootfs)..."
 	@$(call strip-rootfs,$(CURDIR)/lemans/output/rawprogram0.xml,$(FLASH_LAVA_DIR)/rawprogram0-only-kernel.xml)
 	@# Copy the static payload + built artifacts into the flat dir.
@@ -1183,8 +1183,8 @@ flash-lava-package: $(BLOBS_STAMP) linux-firmware
 ################################################################################
 # flash-lava-yocto — Flash the COMPLETE Yocto release to a lab board via LAVA.
 #
-# The LAVA counterpart of 'flash-yocto', as flash-lava is of flash-loader +
-# flash-kernel. Where flash-lava packages the boot chain + kernel only (no
+# The LAVA counterpart of 'flash-yocto', as flash-lava is of flash-bootimage +
+# flash-uki. Where flash-lava packages the boot chain + kernel only (no
 # rootfs, LUN0 rootfs.img stripped), this packages the full unmodified Yocto
 # release exactly as flash-yocto flashes it: all 6 LUNs INCLUDING rootfs.img,
 # with every patch, straight from the built .qcomflash directory.
@@ -1250,11 +1250,11 @@ flash-lava-yocto-package:
 # flash-sail — Flash the SAIL (safety-island) NOR image.
 #
 # The SAIL subsystem boots from its own NOR flash, wholly independent of the UFS
-# boot chain that flash-loader/flash-kernel program. $(SAIL_NOR_DIR) is a
+# boot chain that flash-bootimage/flash-uki program. $(SAIL_NOR_DIR) is a
 # self-contained flash set inside the fetched blob drop: its own DDR firehose
 # programmer, rawprogram0.xml, patch0.xml, and payload ELFs (sailhyp.elf,
 # sailsw1.elf, GPT bins). Nothing here comes from the local build, so — unlike
-# flash-loader/flash-kernel — there is no staging into lemans/output/; qdl runs
+# flash-bootimage/flash-uki — there is no staging into lemans/output/; qdl runs
 # straight from the blob directory, exactly as flash-yocto does.
 #
 # Depends on $(BLOBS_STAMP) so the set is fetched and, being version-keyed,
@@ -1302,7 +1302,7 @@ flash-sail-wipe: $(BLOBS_STAMP)
 # flash-ufs-provision — Re-provision the UFS LUN layout (recover a broken UFS)
 #
 # Use ONLY when a firmware upgrade / flash gone wrong has broken the on-device
-# partition (LUN) layout, so that a normal 'make flash-loader'/'make flash-kernel'
+# partition (LUN) layout, so that a normal 'make flash-bootimage'/'make flash-uki'
 # no longer succeeds. This is a recovery step, not part of a routine flash.
 # Provisioning rewrites the UFS unit descriptors / LUN layout, so it DESTROYS
 # ALL DATA on the device.
@@ -1319,7 +1319,7 @@ flash-sail-wipe: $(BLOBS_STAMP)
 # Override with:  make flash-ufs-provision UFS_PROVISION_XML=provision_1_1.xml
 #
 # prog_firehose_ddr.elf is resolved from lemans/input/, the Yocto deploy dir, or
-# lemans/blobs/ (this recovery target keeps that fallback; flash-loader/flash-kernel
+# lemans/blobs/ (this recovery target keeps that fallback; flash-bootimage/flash-uki
 # themselves stage strictly from lemans/blobs/); the copy bundled inside
 # provision.zip is ignored.
 ################################################################################
@@ -1590,7 +1590,7 @@ fetch-blobs-clean:
 #   build/tmp/deploy/images/iq-9075-evk/
 #
 # NOTE: flash-yocto flashes directly from $(YOCTO_FLASH) (the .qcomflash dir).
-#       flash-loader/flash-kernel do NOT read from here — they stage stock
+#       flash-bootimage/flash-uki do NOT read from here — they stage stock
 #       firmware strictly from lemans/blobs/ (make fetch-blobs).
 ################################################################################
 META_QCOM_DIR  ?= $(CURDIR)/yocto/meta-qcom
@@ -1638,7 +1638,7 @@ yocto:
 # firmware, efi.bin and rootfs.img — to verify the default hardware against the
 # released BSP.  No local build artifacts are substituted.
 #
-# NOTE: this overwrites whatever 'make flash-loader' / 'make flash-kernel'
+# NOTE: this overwrites whatever 'make flash-bootimage' / 'make flash-uki'
 # installed.  Re-run those afterward to restore your custom build.
 flash-yocto:
 	@if [ ! -f "$(YOCTO_FLASH)/prog_firehose_ddr.elf" ]; then \

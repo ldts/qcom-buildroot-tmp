@@ -13,7 +13,7 @@ Two jobs, mirroring the two local USB flash paths:
 | `flash-lava.yaml` | `make flash-lava` | loader + kernel (LUNs 0,1,2,4; efi partition only on LUN 0) | ✗ |
 | `flash-lava-yocto.yaml` | `make flash-lava-yocto` | complete Yocto release (all LUNs + patches) | ✓ |
 
-`flash-lava` = `flash-loader` + `flash-efi` combined; `flash-lava-yocto` = the
+`flash-lava` = `flash-bootimage` + `flash-uki` combined; `flash-lava-yocto` = the
 LAVA counterpart of `flash-yocto`.
 
 RB3 Gen2 uses **LUNs 0, 1, 2, 4** (there is no LUN 3 or 5), so the rawprogram

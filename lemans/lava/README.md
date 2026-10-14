@@ -13,7 +13,7 @@ Two jobs, mirroring the two local USB flash paths:
 | `flash-lava.yaml` | `make flash-lava` | boot chain + kernel (LUNs 0–5, rootfs stripped) | ✗ |
 | `flash-lava-yocto.yaml` | `make flash-lava-yocto` | complete Yocto release (all 6 LUNs + patches) | ✓ |
 
-`flash-lava` = `flash-loader` + `flash-kernel` combined; `flash-lava-yocto` =
+`flash-lava` = `flash-bootimage` + `flash-uki` combined; `flash-lava-yocto` =
 the LAVA counterpart of `flash-yocto`.
 
 ## Quick start (automated)
