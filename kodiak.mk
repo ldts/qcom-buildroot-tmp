@@ -87,6 +87,11 @@ BR2_PACKAGE_OPENSSH_KEY_UTILS ?= y
 # OpenSSL CLI
 BR2_PACKAGE_LIBOPENSSL_BIN ?= y
 
+# stress-ng — CPU/thermal soak load generator. Drives the qcom-tests "CPU
+# stress" option for multi-hour stability runs; the runner falls back to a
+# busybox 'yes' busy-loop if this is ever disabled.
+BR2_PACKAGE_STRESS_NG ?= y
+
 # Qualcomm FastRPC test — validates the OP-TEE PAS coprocessor reset sequence
 BR2_PACKAGE_FASTRPC_EXT ?= y
 
