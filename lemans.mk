@@ -21,7 +21,7 @@
 #   all            Build OP-TEE OS, TF-A BL31, U-Boot (SPL + proper), Linux, Buildroot, and efi.bin
 #   clean          Clean all components
 #
-#   efi            (Re)build the UKI and inject it into lemans/output/efi.bin
+#   uki            (Re)build the UKI and inject it into lemans/output/efi.bin
 #   bootimage      Build and sign lemans/output/tz.mbn + uefi.elf
 #
 #   optee-os       Build OP-TEE OS
@@ -255,7 +255,7 @@ export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v ' ' | tr '\n' ':' |
 ################################################################################
 .PHONY: all clean
 
-all: optee-os tfa u-boot u-boot-proper linux buildroot efi
+all: optee-os tfa u-boot u-boot-proper linux buildroot uki
 
 clean: optee-os-clean tfa-clean u-boot-clean u-boot-proper-clean linux-clean buildroot-clean
 
@@ -273,9 +273,9 @@ help:
 	@echo "  bootimage      Build the boot chain → lemans/output/"
 	@echo "                   tz.mbn    signed U-Boot SPL          (tz partition)"
 	@echo "                   uefi.elf  SPL_ATF FIT: BL31+OP-TEE+U-Boot (uefi part.)"
-	@echo "  efi            Build kernel UKI + rootfs → lemans/output/efi.bin (LUN 0)"
+	@echo "  uki            Build kernel UKI + rootfs → lemans/output/efi.bin (LUN 0)"
 	@echo "  flash-loader   Flash the boot chain via QDL (LUNs 1-5; needs bootimage)"
-	@echo "  flash-kernel   Flash efi.bin via QDL (LUN 0; needs efi)"
+	@echo "  flash-kernel   Flash efi.bin via QDL (LUN 0; needs uki)"
 	@echo "  flash-lava     Package a combined boot-chain + kernel tarball for LAVA"
 	@echo "                 (lemans/output/lemans-flash.qcomflash.tar.gz); flash a"
 	@echo "                 remote lab board via LAVA instead of local USB QDL."
@@ -287,8 +287,8 @@ help:
 	@echo ""
 	@echo "  Typical rebuild + flash:"
 	@echo "    make bootimage && make flash-loader     # boot chain"
-	@echo "    make efi       && make flash-kernel     # kernel + rootfs"
-	@echo "    make bootimage efi && make flash-lava   # both, packaged for LAVA"
+	@echo "    make uki       && make flash-kernel     # kernel + rootfs"
+	@echo "    make bootimage uki && make flash-lava   # both, packaged for LAVA"
 	@echo ""
 	@echo "════════════════════════════════════════════════════════════════════════"
 	@echo " COMPONENT TARGETS  (sub-builds invoked by the main targets)"
@@ -359,7 +359,7 @@ help:
 	@echo " CLEAN TARGETS"
 	@echo "════════════════════════════════════════════════════════════════════════"
 	@echo "  optee-os-clean, tfa-clean, u-boot-clean, u-boot-proper-clean, spl-clean, uefi-clean,"
-	@echo "  linux-clean, buildroot-clean, efi-clean, bootimage-clean, yocto-clean,"
+	@echo "  linux-clean, buildroot-clean, uki-clean, bootimage-clean, yocto-clean,"
 	@echo "  linux-firmware-clean"
 	@echo ""
 	@echo "════════════════════════════════════════════════════════════════════════"
@@ -773,9 +773,9 @@ LINUX_CMDLINE ?= \
 # transactions are aborted and the devices fail to initialize. Remove once the
 # device tree describes all SMMU masters.
 
-.PHONY: efi efi-clean
+.PHONY: uki uki-clean
 
-efi: linux buildroot linux-firmware
+uki: linux buildroot linux-firmware
 	rm -f $(LINUX_PATH)/uki.efi $(CURDIR)/lemans/output/efi.bin
 	ukify build \
 		--linux=$(LINUX_IMAGE) \
@@ -794,7 +794,7 @@ efi: linux buildroot linux-firmware
 	mcopy -i $(CURDIR)/lemans/output/efi.bin $(BOOTAA64_EFI) ::/EFI/BOOT/bootaa64.efi
 	mcopy -i $(CURDIR)/lemans/output/efi.bin $(LINUX_PATH)/uki.efi ::/EFI/Linux/uki.efi
 
-efi-clean:
+uki-clean:
 	rm -f $(LINUX_PATH)/uki.efi $(CURDIR)/lemans/output/efi.bin
 
 ################################################################################
@@ -805,7 +805,7 @@ efi-clean:
 # it into a copy of the Yocto efi.bin (replacing its stock UKI). Flash the
 # result with 'make flash-kernel' (efi.bin only — rootfs.img untouched).
 #
-# Unlike 'efi' (which boots the Buildroot initramfs from a freshly-built
+# Unlike 'uki' (which boots the Buildroot initramfs from a freshly-built
 # efi.bin), this reuses the Yocto efi.bin and boots the on-disk Yocto rootfs, so
 # the matching Yocto rootfs.img must already be flashed (e.g. 'make flash-yocto').
 #
@@ -1031,13 +1031,13 @@ flash-loader: $(BLOBS_STAMP) linux-firmware
 		    rawprogram4-qupfw.xml rawprogram5.xml
 
 # KERNEL_BLOB_FILES (defined above) is staged from the fetched blob set. efi.bin
-# is NOT here — it comes from lemans/output/ (the 'make efi' UKI); rootfs.img is
+# is NOT here — it comes from lemans/output/ (the 'make uki' UKI); rootfs.img is
 # stripped from the rawprogram so only the kernel partition is written.
 #
 # Mirrors flash-loader: stage straight from lemans/blobs/ into lemans/output/
 # (overwriting) so the most recently fetched blobs are what flashes, and depend
 # on the version-keyed stamp so a BLOBS_VERSION bump re-fetches. efi.bin is left
-# as 'make efi' wrote it and flashed from lemans/output/.
+# as 'make uki' wrote it and flashed from lemans/output/.
 flash-kernel: $(BLOBS_STAMP)
 	$(call stage-blobs-strict,$(KERNEL_BLOB_FILES))
 	@# Kernel-only rawprogram0: drop the rootfs.img entry so only efi.bin (LUN 0
@@ -1045,7 +1045,7 @@ flash-kernel: $(BLOBS_STAMP)
 	@echo "Generating rawprogram0-only-kernel.xml (efi only, no rootfs)..."
 	@$(call strip-rootfs,$(CURDIR)/lemans/output/rawprogram0.xml,$(CURDIR)/lemans/output/rawprogram0-only-kernel.xml)
 	@if [ ! -f "$(CURDIR)/lemans/output/efi.bin" ]; then \
-		echo "ERROR: lemans/output/efi.bin not found — run 'make efi' first"; \
+		echo "ERROR: lemans/output/efi.bin not found — run 'make uki' first"; \
 		echo "       (the UKI kernel image written to LUN 0)"; \
 		exit 1; \
 	fi
@@ -1085,7 +1085,7 @@ flash-kernel: $(BLOBS_STAMP)
 #
 # Depends on the same prerequisites as the two source targets: the fetched blob
 # set ($(BLOBS_STAMP)), linux-firmware (for qupv3fw.elf), and the built
-# tz.mbn + uefi.elf + efi.bin (from 'make bootimage' and 'make efi').
+# tz.mbn + uefi.elf + efi.bin (from 'make bootimage' and 'make uki').
 FLASH_LAVA_DIR   = $(CURDIR)/lemans/output/flash-lava
 FLASH_LAVA_TARBALL = $(CURDIR)/lemans/output/lemans-flash.qcomflash.tar.gz
 
@@ -1135,7 +1135,7 @@ flash-lava-package: $(BLOBS_STAMP) linux-firmware
 		exit 1; \
 	fi
 	@if [ ! -f "$(CURDIR)/lemans/output/efi.bin" ]; then \
-		echo "ERROR: lemans/output/efi.bin not found — run 'make efi' first"; \
+		echo "ERROR: lemans/output/efi.bin not found — run 'make uki' first"; \
 		echo "       (the UKI kernel image written to LUN 0)"; \
 		exit 1; \
 	fi
@@ -1453,7 +1453,7 @@ buildroot: linux-firmware | $(OVERLAY_DIR)
 # linux-firmware — stage upstream linux-firmware into the buildroot overlay:
 #   /lib/firmware/$(FW_SOC)  — per-SoC DSP/remoteproc + QUP blobs
 #   /lib/firmware/$(FW_VPU)  — venus/iris video-codec firmware (vpu*.mbn)
-# Standalone target, independent of fetch-blobs; 'buildroot' (and hence 'efi')
+# Standalone target, independent of fetch-blobs; 'buildroot' (and hence 'uki')
 # depends on it so the firmware is baked into the rootfs/UKI regardless of when
 # (or whether) fetch-blobs runs.
 .PHONY: linux-firmware linux-firmware-clean

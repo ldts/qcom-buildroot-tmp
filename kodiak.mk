@@ -16,8 +16,8 @@
 #   all            Build OP-TEE OS, U-Boot, TF-A, Linux, Buildroot, and efi.bin
 #   clean          Clean all components
 #
-#   efi            (Re)build the UKI FAT image from Linux + Buildroot initramfs
-#   loader         Build uefi.elf (FIP) and tz.mbn (BL2 signed with sectools)
+#   uki            (Re)build the UKI FAT image from Linux + Buildroot initramfs
+#   bootimage      Build uefi.elf (FIP) and tz.mbn (BL2 signed with sectools)
 #                  via optee-os, u-boot, tfa
 #
 #   optee-os       Build OP-TEE OS
@@ -29,7 +29,7 @@
 #   linux-defconfig Configure the kernel (auto-invoked by linux if needed)
 #   buildroot      Build the root filesystem (via common.mk)
 #   verify-blobs   Verify all pre-built blobs: bootaa64.efi (verify-bootaa64,
-#                  a prereq of efi) and libqtisec.a (verify-qtiseclib — fetched
+#                  a prereq of uki) and libqtisec.a (verify-qtiseclib — fetched
 #                  if absent, then verified — a prereq of tfa)
 #
 #   fetch-blobs    Download QCM6490 firmware blobs directly (no Yocto build)
@@ -173,7 +173,7 @@ LINUX_PATH   ?= $(ROOT)/linux
 # Pre-built blob integrity — files + MD5 checksums
 ################################################################################
 # bootaa64.efi — UEFI fallback boot entry, checked in and injected into
-# efi.bin by the efi target.
+# efi.bin by the uki target.
 BOOTAA64_EFI      = $(CURDIR)/kodiak/input/bootaa64.efi
 BOOTAA64_EFI_MD5  = 5bdd003de705ec4128a0e4705962fe98
 
@@ -220,7 +220,7 @@ CFG_IN_TREE_EARLY_TAS += qcom_pas/cff7d191-7ca0-4784-af13-48223b9a4fbe
 ################################################################################
 .PHONY: all clean
 
-all: optee-os u-boot tfa linux buildroot efi
+all: optee-os u-boot tfa linux buildroot uki
 
 clean: tfa-clean optee-os-clean u-boot-clean linux-clean buildroot-clean
 
@@ -229,11 +229,11 @@ help:
 	@echo "Qualcomm RB3 Gen2 (QCM6490/Kodiak) build system"
 	@echo ""
 	@echo "Output targets  (write files to kodiak/output/)"
-	@echo "  make efi"
+	@echo "  make uki"
 	@echo "    Intermediate: linux, buildroot"
 	@echo "    Produces:     kodiak/output/efi.bin  — FAT32 image with UKI (EFI boot path)"
 	@echo ""
-	@echo "  make loader"
+	@echo "  make bootimage"
 	@echo "    Intermediate: optee-os, u-boot, tfa"
 	@echo "    Produces:     kodiak/output/uefi.elf — FIP image (OP-TEE + U-Boot) at 0x9fc00000"
 	@echo "                  kodiak/output/tz.mbn   — BL2 signed with sectools (OEM TEST key)"
@@ -252,10 +252,10 @@ help:
 	@echo "  linux-defconfig  Apply \$$(LINUX_DEFCONFIG) and the kodiak config (TEE/OP-TEE/PAS/venus, MODULES=n)"
 	@echo "  buildroot      Build the root filesystem"
 	@echo "  verify-blobs   Verify all pre-built blobs (bootaa64.efi + libqtisec.a; qtiseclib fetched if absent)"
-	@echo "  efi            Rebuild Buildroot rootfs + kernel, build UKI, inject into kodiak/output/efi.bin"
+	@echo "  uki            Rebuild Buildroot rootfs + kernel, build UKI, inject into kodiak/output/efi.bin"
 	@echo ""
 	@echo "Boot-image targets"
-	@echo "  loader         Build uefi.elf (FIP) + tz.mbn (BL2 signed with sectools)"
+	@echo "  bootimage      Build uefi.elf (FIP) + tz.mbn (BL2 signed with sectools)"
 	@echo ""
 	@echo "Flash targets"
 	@echo "  flash-loader   Flash tz.mbn + uefi.elf via QDL"
@@ -290,7 +290,7 @@ help:
 	@echo ""
 	@echo "Clean targets"
 	@echo "  optee-os-clean, u-boot-clean, tfa-clean, linux-clean,"
-	@echo "  buildroot-clean, efi-clean, loader-clean, yocto-clean,"
+	@echo "  buildroot-clean, uki-clean, bootimage-clean, yocto-clean,"
 	@echo "  linux-firmware-clean"
 	@echo ""
 	@echo "Configurable variables (override on the command line or in the environment)"
@@ -557,9 +557,9 @@ LINUX_CMDLINE ?= \
 	qcom_scm.download_mode=1 \
 	earlycon
 
-.PHONY: efi efi-clean
+.PHONY: uki uki-clean
 
-efi: linux buildroot verify-bootaa64 linux-firmware
+uki: linux buildroot verify-bootaa64 linux-firmware
 	ukify build \
 		--linux=$(LINUX_IMAGE) \
 		--initrd=$(BR_INITRAMFS) \
@@ -577,7 +577,7 @@ efi: linux buildroot verify-bootaa64 linux-firmware
 	mcopy -i $(CURDIR)/kodiak/output/efi.bin $(BOOTAA64_EFI) ::/EFI/BOOT/bootaa64.efi
 	mcopy -i $(CURDIR)/kodiak/output/efi.bin $(LINUX_PATH)/uki.efi ::/EFI/Linux/uki.efi
 
-efi-clean:
+uki-clean:
 	rm -f $(LINUX_PATH)/uki.efi $(CURDIR)/kodiak/output/efi.bin
 
 ################################################################################
@@ -587,11 +587,11 @@ efi-clean:
 # the BL2 and signs it into tz.mbn with sectools (OEM TEST key); tz.mbn is always
 # produced by signing.
 ################################################################################
-.PHONY: loader loader-clean
+.PHONY: bootimage bootimage-clean
 
-loader: optee-os u-boot tfa
+bootimage: optee-os u-boot tfa
 
-loader-clean: tfa-clean optee-os-clean u-boot-clean
+bootimage-clean: tfa-clean optee-os-clean u-boot-clean
 	rm -f kodiak/output/tz.mbn kodiak/output/uefi.elf
 
 ################################################################################
@@ -605,11 +605,11 @@ loader-clean: tfa-clean optee-os-clean u-boot-clean
 #      gpt_main0.bin,gpt_backup0.bin,patch0.xml} kodiak/input/
 #
 #   flash-loader   Flashes the full loader image (tz.mbn + uefi.elf) via QDL.
-#                  Requires kodiak/output/{tz.mbn,uefi.elf} — run 'make loader'
+#                  Requires kodiak/output/{tz.mbn,uefi.elf} — run 'make bootimage'
 #                  first; the target errors if they are absent.
 #
 #   flash-efi      Flashes only the EFI partition (efi.bin / UKI) via QDL.
-#                  Requires kodiak/output/efi.bin — run 'make efi' first; the
+#                  Requires kodiak/output/efi.bin — run 'make uki' first; the
 #                  target errors if it is absent.  Kernel-only update, without
 #                  reflashing the loader.  rawprogram0-only-kernel.xml is
 #                  generated from rawprogram0.xml (Yocto deploy) by keeping only
@@ -630,7 +630,7 @@ flash-loader:
 	@if [ ! -f "$(CURDIR)/kodiak/output/tz.mbn" ] || \
 	    [ ! -f "$(CURDIR)/kodiak/output/uefi.elf" ]; then \
 		echo "ERROR: kodiak/output/tz.mbn and/or kodiak/output/uefi.elf not found"; \
-		echo "       Run 'make loader' first to build the boot chain."; \
+		echo "       Run 'make bootimage' first to build the boot chain."; \
 		exit 1; \
 	fi
 	@for f in prog_firehose_ddr.elf rawprogram4.xml rawprogram1.xml rawprogram2.xml \
@@ -689,7 +689,7 @@ flash-loader:
 flash-efi:
 	@if [ ! -f "$(CURDIR)/kodiak/output/efi.bin" ]; then \
 		echo "ERROR: kodiak/output/efi.bin not found"; \
-		echo "       Run 'make efi' first to build the UKI image."; \
+		echo "       Run 'make uki' first to build the UKI image."; \
 		exit 1; \
 	fi
 	@for f in prog_firehose_ddr.elf rawprogram0.xml gpt_main0.bin gpt_backup0.bin patch0.xml; do \
@@ -821,7 +821,7 @@ buildroot: linux-firmware | $(OVERLAY_DIR)
 #   /lib/firmware/$(FW_SOC)        — per-SoC DSP/remoteproc images + jsn
 #   /lib/firmware/$(FW_SOC_AUDIO)  — AudioReach ADSP topology (tplg)
 #   /lib/firmware/$(FW_VPU)        — venus video-codec firmware (vpu20_p1*.mbn)
-# Standalone target, independent of fetch-blobs; 'buildroot' (and hence 'efi')
+# Standalone target, independent of fetch-blobs; 'buildroot' (and hence 'uki')
 # depends on it so the firmware is baked into the rootfs/UKI regardless of when
 # (or whether) fetch-blobs runs.  Pinned to FW_SRCREV.
 .PHONY: linux-firmware linux-firmware-clean
@@ -1081,8 +1081,8 @@ flash-yocto:
 # downloads on demand — firehose, rawprogram*/gpt* tables, qupv3fw.elf and the
 # rest of the boot firmware. Each file is still resolved kodiak/input/ → Yocto
 # deploy → kodiak/blobs/, so a Yocto deploy or a hand-staged input/ overrides the
-# fetched copy. The built tz.mbn + uefi.elf (from 'make loader') and efi.bin
-# (from 'make efi') must already exist.
+# fetched copy. The built tz.mbn + uefi.elf (from 'make bootimage') and efi.bin
+# (from 'make uki') must already exist.
 FLASH_LAVA_DIR           = $(CURDIR)/kodiak/output/flash-lava
 FLASH_LAVA_TARBALL       = $(CURDIR)/kodiak/output/kodiak-flash.qcomflash.tar.gz
 FLASH_LAVA_YOCTO_TARBALL = $(CURDIR)/kodiak/output/kodiak-yocto.qcomflash.tar.gz
@@ -1125,12 +1125,12 @@ flash-lava-package: $(BLOBS_STAMP)
 	@if [ ! -f "$(CURDIR)/kodiak/output/tz.mbn" ] || \
 	    [ ! -f "$(CURDIR)/kodiak/output/uefi.elf" ]; then \
 		echo "ERROR: kodiak/output/tz.mbn and/or kodiak/output/uefi.elf not found"; \
-		echo "       Run 'make loader' first to build the boot chain."; \
+		echo "       Run 'make bootimage' first to build the boot chain."; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(CURDIR)/kodiak/output/efi.bin" ]; then \
 		echo "ERROR: kodiak/output/efi.bin not found"; \
-		echo "       Run 'make efi' first to build the UKI image."; \
+		echo "       Run 'make uki' first to build the UKI image."; \
 		exit 1; \
 	fi
 	@# Assemble a clean flat directory for the tarball.

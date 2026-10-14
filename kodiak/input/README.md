@@ -38,7 +38,7 @@ platform. Output goes to `kodiak/blobs/`; flash targets pick it up automatically
 
 Flashes the complete boot partition layout: XBL, TZ, UEFI, GPT tables, and
 sidecar firmware.  Requires `kodiak/output/tz.mbn` and `kodiak/output/uefi.elf`
-to already exist — build them first with `make loader`.
+to already exist — build them first with `make bootimage`.
 
 QDL is invoked as:
 ```
@@ -75,7 +75,7 @@ Files resolved from `kodiak/input/` (auto-copied from Yocto or `kodiak/blobs/` i
 | `XblRamdump.elf` | boot binaries | XBL ramdump handler |
 
 > **Note:** `tz.mbn` and `uefi.elf` are also flashed to LUN 4 but come from
-> `kodiak/output/` (built by `make loader`), not from this directory.
+> `kodiak/output/` (built by `make bootimage`), not from this directory.
 >
 > `dtb.bin` (device tree FAT32 image) is referenced in the partition layout but
 > is **not flashed** — its entries are stripped from `rawprogram4.xml` by
@@ -86,7 +86,7 @@ Files resolved from `kodiak/input/` (auto-copied from Yocto or `kodiak/blobs/` i
 ### `make flash-efi` (EFI partition only)
 
 Flashes `efi.bin` into the EFI partition without touching other partitions.
-Requires `kodiak/output/efi.bin` — build it first with `make efi`.
+Requires `kodiak/output/efi.bin` — build it first with `make uki`.
 
 `rawprogram0-only-kernel.xml` is derived from `rawprogram0.xml` at flash time
 by keeping only the efi partition entry; it is generated automatically if absent.

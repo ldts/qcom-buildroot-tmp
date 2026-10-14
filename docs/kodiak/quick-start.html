@@ -167,14 +167,14 @@ make flash-efi</pre>
       <div class="label">Boot-chain change — OP-TEE OS, TF-A or U-Boot</div>
 <pre><span class="cmt"># rebuild just the component you touched (incremental — seconds–minutes)</span>
 make optee-os        <span class="cmt"># or:  make tfa   /   make u-boot</span>
-make loader          <span class="cmt"># build uefi.elf + tz.mbn (BL2 signed with sectools)</span>
+make bootimage       <span class="cmt"># build uefi.elf + tz.mbn (BL2 signed with sectools)</span>
 make flash-loader    <span class="grn"># reflash the boot chain</span></pre>
     </div>
     <div>
       <div class="label">Kernel change — Linux</div>
 <pre><span class="cmt"># rebuild the kernel (incremental — typically ~1–2 min)</span>
 make linux
-make efi             <span class="cmt"># repackage the EFI image / UKI (efi.bin)</span>
+make uki             <span class="cmt"># repackage the EFI image / UKI (efi.bin)</span>
 make flash-efi    <span class="grn"># reflash the kernel partition only — firmware untouched</span></pre>
     </div>
   </div>

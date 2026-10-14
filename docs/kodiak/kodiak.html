@@ -707,7 +707,7 @@
     </div>
 
     <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-top:18px;margin-bottom:8px">
-      <code style="color:var(--accent);font-size:13px">make efi</code>
+      <code style="color:var(--accent);font-size:13px">make uki</code>
       <span style="margin:0 8px">—</span>Kernel + Root pipeline<span style="margin:0 8px">→</span>
       <code style="color:var(--red);font-size:13px">make flash-efi</code>
     </div>
@@ -716,7 +716,7 @@
       <div class="arrow">+</div>
       <div class="chain-box grn"><div class="cb-label">Buildroot</div><div class="cb-sub">rootfs.cpio.gz</div></div>
       <div class="arrow">→</div>
-      <div class="chain-box hl"><div class="cb-label">make efi</div><div class="cb-sub">uki.efi → efi.bin</div></div>
+      <div class="chain-box hl"><div class="cb-label">make uki</div><div class="cb-sub">uki.efi → efi.bin</div></div>
       <div class="arrow">→</div>
       <div class="chain-box" style="border-color:var(--red);background:#1a0d0d;min-width:130px">
         <div class="cb-label" style="color:var(--red)">make flash-efi</div>
@@ -769,7 +769,7 @@
         <td class="muted">Initramfs root filesystem</td>
       </tr>
       <tr>
-        <td><code style="color:var(--accent)">efi</code></td>
+        <td><code style="color:var(--accent)">uki</code></td>
         <td class="muted">efi.bin — UKI bundling kernel + initramfs + DTB + cmdline</td>
       </tr>
       <tr>
@@ -1256,14 +1256,14 @@
         <ul style="font-size:12.5px">
           <li><span>tz_a / tz_b</span> ← <code>tz.mbn</code> — signed ELF/MBN (BL2)</li>
           <li><span>uefi_a / uefi_b</span> ← <code>uefi.elf</code> — ELF-wrapped FIP (BL31+BL32+BL33)</li>
-          <li><span>efi</span> ← <code>efi.bin</code> — FAT32 image (UKI: kernel + DTB + initramfs)</li>
+          <li><span>uki</span> ← <code>efi.bin</code> — FAT32 image (UKI: kernel + DTB + initramfs)</li>
         </ul>
       </div>
       <div class="col-head">A/B slots &amp; flashing</div>
       <div class="card">
         <ul style="font-size:12px">
           <li><span>_a / _b</span> — two slot copies of tz &amp; uefi; same image in both</li>
-          <li><code>efi</code> is single (no A/B)</li>
+          <li><code>uki</code> is single (no A/B)</li>
           <li><code>flash-loader</code> → tz + uefi (+ blobs)</li>
           <li><code>flash-efi</code> → efi only</li>
         </ul>
@@ -1964,7 +1964,7 @@ earlycon</pre>
   <div class="card" style="max-width:1080px; margin-bottom:18px">
     <p style="line-height:1.75">
       A <strong style="color:var(--text)">Unified Kernel Image</strong> bundles the kernel, device tree,
-      initramfs and the kernel command line into a single PE/COFF EFI binary. <code>make efi</code>
+      initramfs and the kernel command line into a single PE/COFF EFI binary. <code>make uki</code>
       assembles it with <code>systemd-ukify</code> (over <code>kodiak/ukify/linuxaa64.efi.stub</code>) and
       stages it into a FAT32 EFI System Partition image, <code style="color:var(--accent)">efi.bin</code>,
       alongside the UEFI fallback entry.
@@ -1996,7 +1996,7 @@ earlycon</pre>
   </div>
   <p style="font-size:12px; color:var(--muted); margin-top:16px; max-width:900px; text-align:center">
     U-Boot's UEFI discovers and launches the UKI from <code>EFI/Linux/uki.efi</code> at boot; the
-    <code>EFI/BOOT/bootaa64.efi</code> fallback covers default boot. <code>make efi-clean</code> removes uki.efi and efi.bin.
+    <code>EFI/BOOT/bootaa64.efi</code> fallback covers default boot. <code>make uki-clean</code> removes uki.efi and efi.bin.
   </p>
 </section>
 
