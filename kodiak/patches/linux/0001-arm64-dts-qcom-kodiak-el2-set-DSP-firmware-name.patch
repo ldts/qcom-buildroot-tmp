@@ -1,34 +1,36 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jorge Ramirez-Ortiz <jorge.ramirez@oss.qualcomm.com>
 Date: Thu, 11 Jun 2026 00:00:00 +0200
-Subject: [PATCH] arm64: dts: qcom: kodiak-el2: fix DSP firmware-name; enable
- venus (WIP)
+Subject: [PATCH] arm64: dts: qcom: kodiak-el2: fix DSP firmware-name; add venus
+ SMMU streams (WIP)
 
-This kernel already carries the Kodiak EL2 overlay (commit "arm64: dts:
-qcom: kodiak: Add EL2 overlay"), but the adsp/cdsp remoteproc nodes
-inherit firmware-name = "qcom/qcs6490/<x>.mbn" from the base RB3Gen2 DTS.
-linux-firmware ships the RB3Gen2 DSP images under qcom/qcm6490/, so the
-PAS driver's request_firmware() fails with -ENOENT and the remoteproc
-never reaches the OP-TEE PAS authenticate/reset step (so it looks like
-the kernel "never calls OP-TEE for PAS").
+The base RB3Gen2 DTS sets the adsp/cdsp remoteproc firmware-name to
+"qcom/qcs6490/<x>.mbn".  linux-firmware ships the RB3Gen2 DSP images
+under qcom/qcm6490/, so the PAS driver's request_firmware() fails with
+-ENOENT and the remoteproc never reaches the OP-TEE PAS authenticate/
+reset step (so it looks like the kernel "never calls OP-TEE for PAS").
 
 Override the adsp/cdsp firmware-name to qcom/qcm6490/ in the EL2 overlay
 so the images are found and PAS-over-OP-TEE proceeds.
 
-WARNING: UNDER DEVELOPMENT.  The &venus enablement (status, SMMU stream
-mappings and the video-firmware subnode) is experimental and not yet
-validated on Kodiak.  The IOMMU stream IDs and the firmware-loading path
-are still being worked out; expect this hunk to change.
+The kodiak EL2 overlay already enables &venus (status = "okay") and the
+video-firmware subnode upstream.  Add the second apps_smmu stream mapping
+to &venus required to boot the codec over the PAS/OP-TEE firmware path;
+the base kodiak.dtsi only declares the first (0x2180) stream.
+
+WARNING: UNDER DEVELOPMENT.  The &venus enablement is experimental and
+not yet validated on Kodiak.  The IOMMU stream IDs and the firmware-
+loading path are still being worked out; expect this hunk to change.
 
 Signed-off-by: Jorge Ramirez-Ortiz <jorge.ramirez@oss.qualcomm.com>
 ---
 diff --git a/arch/arm64/boot/dts/qcom/kodiak-el2.dtso b/arch/arm64/boot/dts/qcom/kodiak-el2.dtso
-index 0b3a69a0d765..1632ed7968a0 100644
+index fd000fc57..4e72e6982 100644
 --- a/arch/arm64/boot/dts/qcom/kodiak-el2.dtso
 +++ b/arch/arm64/boot/dts/qcom/kodiak-el2.dtso
-@@ -14,10 +14,18 @@
+@@ -13,10 +13,18 @@ &gpu_zap_shader {
  };
- 
+
  &remoteproc_adsp {
 +	/*
 +	 * The base RB3Gen2 DTS firmware-name points at qcom/qcs6490, which
@@ -39,27 +41,21 @@ index 0b3a69a0d765..1632ed7968a0 100644
 +	firmware-name = "qcom/qcm6490/adsp.mbn";
  	iommus = <&apps_smmu 0x1800 0x0>;
  };
- 
+
  &remoteproc_cdsp {
 +	firmware-name = "qcom/qcm6490/cdsp.mbn";
  	iommus = <&apps_smmu 0x11a0 0x0400>;
  };
- 
-@@ -27,7 +35,14 @@
- };
- 
+
+@@ -37,6 +45,9 @@ wlan_ce_mem: wlan-ce@4cd000 {
  &venus {
--	status = "disabled";
-+	status = "okay";
-+
+ 	status = "okay";
+
 +	iommus = <&apps_smmu 0x2180 0x20>,
 +		 <&apps_smmu 0x2184 0x20>;
 +
-+	video-firmware {
-+		iommus = <&apps_smmu 0x21a2 0x0>;
-+	};
- };
- 
- &watchdog {
+ 	video-firmware {
+ 		iommus = <&apps_smmu 0x21a2 0x0>;
+ 	};
 --
 2.34.1

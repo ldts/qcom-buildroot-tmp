@@ -104,8 +104,9 @@ BR2_PACKAGE_TQFTPSERV_EXT ?= y
 # qrtr-ns/tqftpserv. Serves the peripherals' persistent (EFS) storage over QRTR
 # (launched by S42rmtfs). It links libudev and uses /dev/disk/by-partlabel/rmtfs,
 # so it needs a udev provider — switch device creation from devtmpfs-only to
-# eudev (below) — and the rmtfs_mem reserved region kept by kodiak/patches/linux/
-# (otherwise /dev/qcom_rmtfs_mem* are absent).
+# eudev (below).  The rmtfs_mem reserved region (needed for /dev/qcom_rmtfs_mem*)
+# is now provided by the board DTS itself (qcs6490-rb3gen2.dts: memory@f8500000),
+# so no kernel patch is required for it.
 # NOTE: this completes the DSP userspace to match the vendor BSP; ADSP FastRPC
 # additionally needs a 7.2.0-class kernel and still times out on the pinned
 # 7.1.0-rc6 (CDSP and VIDEO pass).

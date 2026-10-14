@@ -8,12 +8,17 @@ the original: the QTEE-fallback qcom_scm_set_remote_state() (removed from
 this tree) is replaced with qcom_pas_set_remote_state(); the OP-TEE path on
 kodiak does not hit it.
 
+Rebased onto qcom-next (v7.3-rc4): the tree now gates
+qcom_scm_mem_protect_video_var() on the SCM PAS backend
+(qcom_pas_get_backend()); that guard is kept and now runs only on the
+VENUS_TZ_QTEE path.
+
 Signed-off-by: Jorge Ramirez-Ortiz <jorge.ramirez@oss.qualcomm.com>
 diff --git a/drivers/media/platform/qcom/venus/core.h b/drivers/media/platform/qcom/venus/core.h
-index 0ca1ac743..3030bef8a 100644
+index 2d5a8a690..1595377e1 100644
 --- a/drivers/media/platform/qcom/venus/core.h
 +++ b/drivers/media/platform/qcom/venus/core.h
-@@ -129,6 +129,13 @@ struct venus_format {
+@@ -133,6 +133,13 @@ struct venus_format {
  	u32 flags;
  };
  
@@ -27,7 +32,7 @@ index 0ca1ac743..3030bef8a 100644
  /**
   * struct venus_core - holds core parameters valid for all instances
   *
-@@ -210,7 +217,7 @@ struct venus_core {
+@@ -216,7 +223,7 @@ struct venus_core {
  	struct device *dev;
  	struct device *dev_dec;
  	struct device *dev_enc;
@@ -37,7 +42,7 @@ index 0ca1ac743..3030bef8a 100644
  		struct device *dev;
  		struct iommu_domain *iommu_domain;
 diff --git a/drivers/media/platform/qcom/venus/firmware.c b/drivers/media/platform/qcom/venus/firmware.c
-index 964c37b97..ab7880cc9 100644
+index 078ff59d5..4513e63d5 100644
 --- a/drivers/media/platform/qcom/venus/firmware.c
 +++ b/drivers/media/platform/qcom/venus/firmware.c
 @@ -9,6 +9,7 @@
@@ -53,14 +58,14 @@ index 964c37b97..ab7880cc9 100644
  #include <linux/sizes.h>
  #include <linux/soc/qcom/mdt_loader.h>
 -#include <dt-bindings/media/qcom,qcs615-venus.h>
+ #include <linux/string.h>
  
  #include "core.h"
- #include "firmware.h"
-@@ -60,146 +60,152 @@ int venus_set_hw_state(struct venus_core *core, bool resume)
+@@ -61,146 +61,151 @@ int venus_set_hw_state(struct venus_core *core, bool resume)
  	int ret;
  
  	if (core->use_tz) {
--		ret = qcom_pas_set_remote_state(resume, VENUS_PAS_ID);
+-		ret = qcom_pas_set_remote_state(resume, 0);
 -		if (resume && ret == -EINVAL)
 -			ret = 0;
 +		if (core->use_tz == VENUS_TZ_OPTEE) {
@@ -78,7 +83,6 @@ index 964c37b97..ab7880cc9 100644
  	}
  
  	if (resume) {
-+
  		venus_reset_cpu(core);
 -	} else {
 -		if (IS_IRIS2(core) || IS_IRIS2_1(core))
@@ -175,7 +179,7 @@ index 964c37b97..ab7880cc9 100644
 -	release_firmware(*mdt);
 +	if (core->use_tz)
 +		ret = qcom_mdt_load(dev, mdt, fwname, VENUS_PAS_ID,
-+					    mem_va, *mem_phys, *mem_size, NULL);
++				    mem_va, *mem_phys, *mem_size, NULL);
 +	else
 +		ret = qcom_mdt_load_no_init(dev, mdt, fwname, mem_va,
 +					    *mem_phys, *mem_size, NULL);
@@ -249,7 +253,7 @@ index 964c37b97..ab7880cc9 100644
 -			       const struct firmware *mdt, const char *fwname,
 -			       phys_addr_t mem_phys, size_t res_size)
 +static int venus_boot_tz(struct venus_core *core, phys_addr_t mem_phys,
-+			    size_t mem_size)
++			 size_t mem_size)
  {
 -	void *mem_va;
 +	struct iommu_domain *iommu;
@@ -291,11 +295,11 @@ index 964c37b97..ab7880cc9 100644
 -	core->fw.mapped_mem_size = res_size;
 -	venus_reset_cpu(core);
 -	return 0;
-+	return 	qcom_pas_auth_and_reset(VENUS_PAS_ID);
++	return qcom_pas_auth_and_reset(VENUS_PAS_ID);
  }
  
  static int venus_shutdown_no_tz(struct venus_core *core)
-@@ -238,6 +244,37 @@ static int venus_shutdown_no_tz(struct venus_core *core)
+@@ -239,6 +244,37 @@ static int venus_shutdown_no_tz(struct venus_core *core)
  	return 0;
  }
  
@@ -333,19 +337,20 @@ index 964c37b97..ab7880cc9 100644
  int venus_firmware_cfg(struct venus_core *core)
  {
  	void __iomem *cpu_cs_base = core->cpu_cs_base;
-@@ -252,37 +289,38 @@ int venus_boot(struct venus_core *core)
+@@ -253,38 +289,39 @@ int venus_boot(struct venus_core *core)
  {
  	struct device *dev = core->dev;
  	const struct venus_resources *res = core->res;
 -	const struct firmware *mdt;
  	const char *fwpath = NULL;
+ 	const char *pas_backend;
  	phys_addr_t mem_phys;
 -	size_t res_size;
 +	size_t mem_size;
  	int ret;
  
  	if (!IS_ENABLED(CONFIG_QCOM_MDT_LOADER) ||
--	    (!core->use_tz && !core->fw.dev))
+-	    (!core->use_tz && !qcom_pas_is_available()))
 -		return driver_deferred_probe_check_state(core->dev);
 +	    (core->use_tz && !qcom_pas_is_available()))
 +		return -EPROBE_DEFER;
@@ -386,9 +391,9 @@ index 964c37b97..ab7880cc9 100644
 -	if (core->use_tz && res->cp_size) {
 +	if ((core->use_tz == VENUS_TZ_QTEE) && res->cp_size) {
  		/*
- 		 * Clues for porting using downstream data:
- 		 * cp_start = 0
-@@ -298,31 +336,22 @@ int venus_boot(struct venus_core *core)
+ 		 * qcom_scm_mem_protect_video_var() only applies to the SCM
+ 		 * backend; other backends (e.g. OP-TEE) own secure memory
+@@ -308,31 +345,22 @@ int venus_boot(struct venus_core *core)
  						     res->cp_nonpixel_start,
  						     res->cp_nonpixel_size);
  		if (ret) {
@@ -427,7 +432,7 @@ index 964c37b97..ab7880cc9 100644
  }
  
  int venus_firmware_check(struct venus_core *core)
-@@ -345,94 +374,6 @@ int venus_firmware_check(struct venus_core *core)
+@@ -355,94 +383,6 @@ int venus_firmware_check(struct venus_core *core)
  	return -EINVAL;
  }
  
@@ -522,25 +527,24 @@ index 964c37b97..ab7880cc9 100644
  int venus_firmware_init(struct venus_core *core)
  {
  	struct platform_device_info info;
-@@ -443,8 +384,15 @@ int venus_firmware_init(struct venus_core *core)
+@@ -453,8 +393,14 @@ int venus_firmware_init(struct venus_core *core)
  
  	np = of_get_child_by_name(core->dev->of_node, "video-firmware");
  	if (!np) {
 -		ret = venus_firmware_init_auto_detect(core);
 -		return ret;
 +		np = of_find_node_by_path("/firmware/optee");
-+		if (np && of_device_is_available(np))
++		if (np && of_device_is_available(np)) {
 +			core->use_tz = VENUS_TZ_OPTEE;
-+		else
++		} else {
 +			core->use_tz = VENUS_TZ_QTEE;
-+		of_node_put(np);
-+
-+		if (core->use_tz == VENUS_TZ_QTEE)
++			of_node_put(np);
 +			return 0;
++		}
  	}
  
  	memset(&info, 0, sizeof(info));
-@@ -483,7 +431,6 @@ int venus_firmware_init(struct venus_core *core)
+@@ -493,7 +439,6 @@ int venus_firmware_init(struct venus_core *core)
  	}
  
  	core->fw.iommu_domain = iommu_dom;
@@ -548,7 +552,7 @@ index 964c37b97..ab7880cc9 100644
  
  	of_node_put(np);
  
-@@ -492,7 +439,6 @@ int venus_firmware_init(struct venus_core *core)
+@@ -502,7 +447,6 @@ int venus_firmware_init(struct venus_core *core)
  err_iommu_free:
  	iommu_domain_free(iommu_dom);
  err_unregister:
@@ -556,7 +560,7 @@ index 964c37b97..ab7880cc9 100644
  	platform_device_unregister(pdev);
  	of_node_put(np);
  	return ret;
-@@ -505,17 +451,14 @@ void venus_firmware_deinit(struct venus_core *core)
+@@ -515,17 +459,14 @@ void venus_firmware_deinit(struct venus_core *core)
  	if (!core->fw.dev)
  		return;
  

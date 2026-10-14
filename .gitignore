@@ -6,6 +6,8 @@
 gdb
 pi3.cfg
 .hafnium_checkout
+# Stamp created by the kodiak 'linux-patch' target (tracks applied kernel patches)
+/kodiak/.linux-patches-applied
 # Fetched artifacts (populated by 'make fetch-blobs')
 /lemans/blobs/
 /lemans/overlay/lib/
