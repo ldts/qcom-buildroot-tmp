@@ -1447,7 +1447,7 @@ DSP_SHARE_DIR  = $(OVERLAY_DIR)/usr/share/qcom
 $(OVERLAY_DIR):
 	@mkdir -p $(OVERLAY_DIR)
 
-buildroot: linux-firmware | $(OVERLAY_DIR)
+buildroot: linux-firmware dsp-runtime | $(OVERLAY_DIR)
 
 # linux-firmware — stage upstream linux-firmware into the buildroot overlay:
 #   /lib/firmware/$(FW_SOC)  — per-SoC DSP/remoteproc + QUP blobs
@@ -1485,7 +1485,38 @@ linux-firmware: | $(OVERLAY_DIR)
 linux-firmware-clean:
 	rm -rf $(FW_CLONE_DIR) $(FW_DEST_DIR) $(FW_VPU_DEST)
 
-fetch-blobs: $(BLOBS_STAMP)
+# dsp-runtime — stage the linux-msm/dsp-binaries DSP user-PD runtime into the
+# buildroot overlay at /usr/share/qcom/...:
+#   fastrpc_shell_* (the signed/unsigned PD images the DSP loads on a FastRPC
+#   session create), the per-domain skels, and the conf.d yamls mapping the DT
+#   model -> DSP_LIBRARY_PATH.  Without this payload on the apps rootfs the DSP
+#   cannot spawn a user PD (tqftpserv has no shell to serve), so every FastRPC
+#   session create times out — fastrpc_test fails 0x8000044f on all domains.
+# Standalone target, independent of fetch-blobs; 'buildroot' (and hence 'uki')
+# depends on it so the runtime is baked into the rootfs regardless of when (or
+# whether) fetch-blobs runs — mirroring the linux-firmware target above.
+.PHONY: dsp-runtime dsp-runtime-clean
+dsp-runtime: | $(OVERLAY_DIR)
+	@mkdir -p $(BLOBS_DIR)
+	@if [ ! -d $(DSP_CLONE_DIR)/.git ]; then \
+		echo "Cloning dsp-binaries ($(DSP_TAG))..."; \
+		git clone --depth=1 --branch $(DSP_TAG) $(DSP_REPO) $(DSP_CLONE_DIR); \
+	fi
+	@mkdir -p $(DSP_SHARE_DIR)/conf.d
+	@cd $(DSP_CLONE_DIR) && \
+		grep '^Install:.*$(DSP_BOARD)' config.txt > .board-config.txt && \
+		./scripts/install.sh .board-config.txt $(DSP_SHARE_DIR)
+	@install -m 0644 $(DSP_CLONE_DIR)/conf.d/*.yaml $(DSP_SHARE_DIR)/conf.d/
+	@# Add the EVK board mapping the upstream conf.d does not cover.
+	@install -m 0644 $(CURDIR)/lemans/dsp-conf.d/lemans-evk.yaml $(DSP_SHARE_DIR)/conf.d/
+	@echo "DSP runtime staged in $(DSP_SHARE_DIR)/ (board: $(DSP_BOARD))"
+
+# dsp-runtime-clean — remove the cloned dsp-binaries repo and the DSP runtime
+# staged into the buildroot overlay.
+dsp-runtime-clean:
+	rm -rf $(DSP_CLONE_DIR) $(DSP_SHARE_DIR)
+
+fetch-blobs: $(BLOBS_STAMP) dsp-runtime
 
 $(BLOBS_STAMP):
 	@mkdir -p $(BLOBS_DIR)
@@ -1553,23 +1584,9 @@ $(BLOBS_STAMP):
 	@sed -i '/filename="dtb\.bin"/d' $(BLOBS_DIR)/rawprogram4.xml
 	@# Remoteproc/QUP firmware (qcom/sa8775p) is staged by the standalone
 	@# 'linux-firmware' target (a prerequisite of buildroot), not here.
-	@# ── DSP runtime (fastrpc_shell + skels) → rootfs overlay ────────────────
-	@# Clone linux-msm/dsp-binaries at the pinned tag and install ONLY this
-	@# board's files (via the repo's install.sh, which maps the versioned source
-	@# dirs into dsp/{adsp,cdsp,...} and pulls licenses from WHENCE), plus the
-	@# conf.d yamls that map the DT model -> DSP_LIBRARY_PATH.
-	@if [ ! -d $(DSP_CLONE_DIR)/.git ]; then \
-		echo "Cloning dsp-binaries ($(DSP_TAG))..."; \
-		git clone --depth=1 --branch $(DSP_TAG) $(DSP_REPO) $(DSP_CLONE_DIR); \
-	fi
-	@mkdir -p $(DSP_SHARE_DIR)/conf.d
-	@cd $(DSP_CLONE_DIR) && \
-		grep '^Install:.*$(DSP_BOARD)' config.txt > .board-config.txt && \
-		./scripts/install.sh .board-config.txt $(DSP_SHARE_DIR)
-	@install -m 0644 $(DSP_CLONE_DIR)/conf.d/*.yaml $(DSP_SHARE_DIR)/conf.d/
-	@# Add the EVK board mapping the upstream conf.d does not cover.
-	@install -m 0644 $(CURDIR)/lemans/dsp-conf.d/lemans-evk.yaml $(DSP_SHARE_DIR)/conf.d/
-	@echo "DSP runtime staged in $(DSP_SHARE_DIR)/ (board: $(DSP_BOARD))"
+	@# DSP user-PD runtime (fastrpc_shell + skels + conf.d) is staged into the
+	@# rootfs overlay by the standalone 'dsp-runtime' target (a prerequisite of
+	@# buildroot, and of fetch-blobs), not here.
 	@touch $(BLOBS_STAMP)
 	@echo "Blobs ready in $(BLOBS_DIR)/"
 
