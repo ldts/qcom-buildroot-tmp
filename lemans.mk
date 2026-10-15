@@ -721,8 +721,7 @@ linux-defconfig:
 		-e DMABUF_HEAPS \
 		-e DMABUF_HEAPS_SYSTEM \
 		-e DMABUF_HEAPS_CMA \
-		-d MODULES \
-		-d QCOM_SCM
+		-d MODULES
 	$(LINUX_EXPORTS) $(MAKE) -C $(LINUX_PATH) olddefconfig
 
 linux: linux-overlays
