@@ -10,10 +10,10 @@
 #   5) ADSP restart   — stop/start aDSP via remoteproc sysfs (PAS teardown+reload)
 #   6) CDSP restart   — stop/start cDSP via remoteproc sysfs (PAS teardown+reload)
 #
-# Env: FRAMES (encode frame count, default 100).
+# Env: FRAMES (encode frame count, default 2500).
 #      STRESS_SECS (CPU stress duration in seconds, default 7200 = 2h).
 
-FRAMES="${FRAMES:-100}"
+FRAMES="${FRAMES:-2500}"
 STRESS_SECS="${STRESS_SECS:-7200}"
 
 pass=0
