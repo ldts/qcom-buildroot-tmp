@@ -125,7 +125,7 @@ actions:
     - 'root@qcm6490'
     - 'root@(.*):[/~]#'
     - 'root@buildroot'
-    - '# '
+    - '\n# '
     timeout:
       minutes: 15
 - test:

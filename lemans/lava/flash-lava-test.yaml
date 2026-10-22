@@ -109,7 +109,7 @@ actions:
     prompts:
     - 'root@buildroot'
     - 'root@(.*):[/~]#'
-    - '# '
+    - '\n# '
     timeout:
       minutes: 15
 - test:
