@@ -80,7 +80,7 @@ override COMPILE_S_KERNEL  := 64
 # Quiet the secure-world console. common.mk defaults CFG_TEE_CORE_LOG_LEVEL to
 # 3 (DEBUG), which floods ttyMSM0 with OP-TEE trace. Drop to 1 (errors only).
 # Set before the common.mk include so its ?= default does not win.
-CFG_TEE_CORE_LOG_LEVEL := 1
+CFG_TEE_CORE_LOG_LEVEL := 2
 
 ################################################################################
 # Buildroot package selection
@@ -220,6 +220,8 @@ include qcom/test.mk
 # (cff7d191) is enumerated; without it the SA8775P PAS remoteprocs
 # (adsp/cdsp/gpdsp) stay stuck in deferred probe.
 CFG_IN_TREE_EARLY_TAS += qcom_pas/cff7d191-7ca0-4784-af13-48223b9a4fbe
+
+OPTEE_OS_COMMON_EXTRA_FLAGS += CFG_QCOM_GENI_SPI=y CFG_QUP_SPI_TEST=y
 
 # Buildroot rejects PATH entries containing spaces (Windows paths from WSL).
 # Export a sanitized PATH for all sub-makes that invoke buildroot.
@@ -666,10 +668,25 @@ bootimage-clean: spl-clean uefi-clean tfa-clean optee-os-clean u-boot-clean u-bo
 LINUX_EXPORTS    = ARCH=arm64 CROSS_COMPILE="$(CCACHE)$(AARCH64_CROSS_COMPILE)"
 LINUX_DEFCONFIG ?= defconfig
 
-.PHONY: linux-defconfig linux linux-clean
+.PHONY: linux-defconfig linux-config linux linux-clean
 
+# Full clean-slate regeneration: wipe all build artifacts, then rebuild the
+# .config from scratch. Use this when you want a guaranteed-pristine tree;
+# note it forces a from-scratch kernel build afterwards.
 linux-defconfig:
 	$(LINUX_EXPORTS) $(MAKE) -C $(LINUX_PATH) mrproper
+	$(MAKE) linux-config
+
+# Regenerate .config in place from the single source of truth, WITHOUT wiping
+# build objects — so every `make linux` tracks this recipe yet stays
+# incremental (kbuild's syncconfig rebuilds only objects whose config actually
+# changed; an unchanged recipe yields a byte-identical .config and no rebuild).
+# This replaces the old "[ ! -f .config ]" guard, which made .config sticky so
+# scripts/config edits added after the first build never took effect (e.g. a
+# stale TCG_TIS_SPI survived its -d edit). linux-defconfig disables MODULES,
+# which forces hidden 'default m' drivers like QCOM_PAS_TEE built-in (needed
+# for the PAS remoteprocs to probe — they can't wait on a late-loaded module).
+linux-config:
 	$(LINUX_EXPORTS) $(MAKE) -C $(LINUX_PATH) $(LINUX_DEFCONFIG)
 	$(LINUX_EXPORTS) $(LINUX_PATH)/scripts/config --file $(LINUX_PATH)/.config \
 		-e TEE \
@@ -699,18 +716,13 @@ linux-defconfig:
 		-e DMABUF_HEAPS \
 		-e DMABUF_HEAPS_SYSTEM \
 		-e DMABUF_HEAPS_CMA \
+		-e TCG_OPTEE \
+		-e TCG_OPTEE_DTPM \
+		-d TCG_TIS_SPI \
 		-d MODULES
 	$(LINUX_EXPORTS) $(MAKE) -C $(LINUX_PATH) olddefconfig
 
-linux: linux-overlays
-	@# Generate .config from the single source of truth (linux-defconfig) so the
-	@# build can never drift from it (this is why QCOMTEE / QCOM_PAS_TEE / MODULES
-	@# silently regressed before).  linux-defconfig disables MODULES, which forces
-	@# hidden 'default m' drivers like QCOM_PAS_TEE built-in (needed for the PAS
-	@# remoteprocs to probe — they can't wait on a late-loaded module).
-	@if [ ! -f $(LINUX_PATH)/.config ]; then \
-		$(MAKE) linux-defconfig; \
-	fi
+linux: linux-config linux-overlays
 	$(LINUX_EXPORTS) $(MAKE) -C $(LINUX_PATH) -j$(shell nproc) Image vmlinuz.efi
 	$(LINUX_EXPORTS) $(MAKE) -C $(LINUX_PATH) -j1 dtbs
 
