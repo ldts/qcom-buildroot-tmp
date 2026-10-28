@@ -712,8 +712,7 @@ flash-uki:
 #   softwarecenter.qualcomm.com  — boot binaries zip (XBL, AOP, firehose, …)
 #   artifacts.codelinaro.org     — CDT (Customer Device Tree) blob
 #   github.com/qualcomm-linux/qcom-ptool — GPT tables + rawprogram XMLs
-#     (these are pre-generated files committed to the repo's platforms/ tree;
-#      no Python tool invocation is needed)
+#     (generated at build time from the platform's board YAML / partitions.conf)
 #
 # Output: kodiak/blobs/ — flat directory, same file names as YOCTO_FLASH.
 # The flash targets check this directory as a fallback when a file is absent
@@ -739,6 +738,13 @@ CDT_SHA256     = 0fe1c0b4050cf54203203812b2c1f0d9698823d8defc8b6516414a4e5e0c557
 CDT_FILE       = cdt_core_kit.bin
 
 PTOOL_REPO     = https://github.com/qualcomm-linux/qcom-ptool.git
+# Pinned: qcom-ptool has no release tags and its platform-source format drifts
+# on the default branch (it is migrating platforms from a per-dir
+# partitions.conf to a platforms/boards/<plat>.yaml layout). Pin to a known-good
+# commit so an upstream change cannot silently break the partition-table
+# generation below; bump this deliberately (and re-test) rather than tracking
+# HEAD.
+PTOOL_REVISION = 5da6896fdfa1a7cb142e53145c543021d69fd9c9
 PTOOL_DIR      = $(BLOBS_DIR)/qcom-ptool
 PTOOL_PLATFORM = qcs6490-rb3gen2
 
@@ -916,11 +922,20 @@ $(BLOBS_STAMP):
 		$(CDT_FILE) -d $(BLOBS_DIR)/cdt
 	@cp $(BLOBS_DIR)/cdt/$(CDT_FILE) $(BLOBS_DIR)/cdt.bin
 	@# ── Partition tables: GPT bins + rawprogram XMLs via qcom-ptool ───────────
-	@# qcom-ptool has no pre-generated files — partitions.conf must be processed
-	@# with gen_partition (conf→XML) then ptool (XML→GPT bins + rawprogram XMLs).
+	@# qcom-ptool ships no pre-generated partitions.xml — it is produced at build
+	@# time, then ptool turns it into GPT bins + rawprogram XMLs. qcom-ptool is
+	@# mid-migration between two partition-source formats, so handle both:
+	@#   • new "board" platforms (platforms/boards/<plat>.yaml):
+	@#       gen_partition --board <yaml> -C platforms/<plat>  (writes each
+	@#       storage's partitions.xml; the legacy per-dir partitions.conf is gone)
+	@#   • legacy platforms (platforms/<plat>/<storage>/partitions.conf):
+	@#       gen_partition -i partitions.conf -o partitions.xml
 	@if [ ! -d $(PTOOL_DIR) ]; then \
-		echo "Cloning qcom-ptool..."; \
-		git clone --depth=1 $(PTOOL_REPO) $(PTOOL_DIR); \
+		echo "Fetching qcom-ptool @ $(PTOOL_REVISION)..."; \
+		git init -q $(PTOOL_DIR); \
+		git -C $(PTOOL_DIR) remote add origin $(PTOOL_REPO); \
+		git -C $(PTOOL_DIR) fetch -q --depth=1 origin $(PTOOL_REVISION); \
+		git -C $(PTOOL_DIR) checkout -q --detach FETCH_HEAD; \
 	fi
 	@if [ ! -x $(PTOOL_DIR)/.venv/bin/qcom-ptool ]; then \
 		echo "Installing qcom-ptool into venv..."; \
@@ -929,12 +944,24 @@ $(BLOBS_STAMP):
 	fi
 	@PTOOL=$(PTOOL_DIR)/.venv/bin/qcom-ptool; \
 	PLAT_DIR=$(PTOOL_DIR)/platforms/$(PTOOL_PLATFORM)/ufs; \
-	if [ ! -d "$$PLAT_DIR" ]; then \
-		echo "ERROR: platform '$(PTOOL_PLATFORM)/ufs' not found in qcom-ptool repo"; \
-		echo "       Available: $$(ls $(PTOOL_DIR)/platforms/)"; \
+	BOARD_YAML=$(PTOOL_DIR)/platforms/boards/$(PTOOL_PLATFORM).yaml; \
+	if [ -f "$$BOARD_YAML" ]; then \
+		$$PTOOL gen_partition --board "$$BOARD_YAML" \
+			-C $(PTOOL_DIR)/platforms/$(PTOOL_PLATFORM); \
+	elif [ -f "$$PLAT_DIR/partitions.conf" ]; then \
+		$$PTOOL gen_partition -i "$$PLAT_DIR/partitions.conf" \
+			-o "$$PLAT_DIR/partitions.xml"; \
+	else \
+		echo "ERROR: no partition source for '$(PTOOL_PLATFORM)/ufs' in qcom-ptool"; \
+		echo "       expected platforms/boards/$(PTOOL_PLATFORM).yaml or"; \
+		echo "       $$PLAT_DIR/partitions.conf"; \
+		echo "       Available boards: $$(ls $(PTOOL_DIR)/platforms/boards/ 2>/dev/null)"; \
 		exit 1; \
 	fi; \
-	$$PTOOL gen_partition -i "$$PLAT_DIR/partitions.conf" -o "$$PLAT_DIR/partitions.xml"; \
+	if [ ! -f "$$PLAT_DIR/partitions.xml" ]; then \
+		echo "ERROR: gen_partition did not produce $$PLAT_DIR/partitions.xml"; \
+		exit 1; \
+	fi; \
 	(cd "$$PLAT_DIR" && $$PTOOL ptool -x partitions.xml); \
 	find "$$PLAT_DIR" \
 		\( -name 'gpt_*.bin' -o -name 'rawprogram*.xml' \
