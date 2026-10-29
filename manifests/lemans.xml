@@ -6,7 +6,7 @@
   <remote name="optee" fetch="https://github.com/OP-TEE" />
   <remote name="ldts"  fetch="https://github.com/ldts" />
 
-  <project path="build" remote="qcl" name="qcom-buildroot.git" revision="main">
+  <project path="build" remote="qcl" name="qcom-buildroot.git" revision="features/lemans/security/dtpm">
     <linkfile src="lemans.mk" dest="build/Makefile" />
   </project>
 
