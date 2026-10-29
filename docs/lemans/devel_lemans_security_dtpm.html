@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discrete TPM (dTPM) integration — OP-TEE on Qualcomm Lemans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_rtd.css">
+<style>
+  /* Component styles ported from the stand-alone bring-up write-up and mapped
+     onto the RTD theme palette. */
+  .dtpm {
+    --surface:#f6f7f9; --surface2:#eef0f4; --text:#404040; --muted:#5c636e;
+    --border:#e1e4e5; --accent:#2980b9; --accent-soft:#e7f2fa;
+    --good:#1a7f4b; --good-soft:#e3f3ea; --bad:#c0392b; --bad-soft:#fbe9e7;
+    --warn:#b7791f; --warn-soft:#fff3dc;
+    --mono:'SFMono-Regular', Menlo, Consolas, monospace;
+  }
+  .dtpm .lede { color: var(--muted); font-size: 1.02rem; margin: .2rem 0 1.1rem; }
+  .dtpm .fig { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin: 20px 0; }
+  .dtpm .fig figcaption { color: var(--muted); font-size: .85rem; margin-top: 12px; text-align: center; }
+  .dtpm .fig svg { display: block; width: 100%; height: auto; }
+  .dtpm .tbl-scroll { overflow-x: auto; }
+  .dtpm table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: .9rem; }
+  .dtpm th, .dtpm td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .dtpm th { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--surface); }
+  .dtpm tbody tr:hover { background: var(--surface); }
+  .dtpm td code { white-space: nowrap; }
+  .dtpm .callout { border: 1px solid var(--border); border-left-width: 4px; border-radius: 10px; padding: 14px 18px; margin: 18px 0; background: var(--surface); }
+  .dtpm .callout .ct { font-weight: 650; margin-bottom: 4px; display: block; }
+  .dtpm .callout.key { border-left-color: var(--accent); background: var(--accent-soft); }
+  .dtpm .callout.good { border-left-color: var(--good); background: var(--good-soft); }
+  .dtpm .callout.bad { border-left-color: var(--bad); background: var(--bad-soft); }
+  .dtpm .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .dtpm .mono-val { font-family: var(--mono); font-weight: 650; }
+  .dtpm .tag { font-family: var(--mono); font-size: .76rem; padding: 1px 7px; border-radius: 5px; border: 1px solid var(--border); white-space: nowrap; }
+  .dtpm .tag.g { background: var(--good-soft); color: var(--good); border-color: transparent; }
+  .dtpm .tag.b { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+  .dtpm .tag.w { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .dtpm .grid2 { display: grid; gap: 16px; }
+  @media (min-width: 680px) { .dtpm .grid2 { grid-template-columns: 1fr 1fr; } }
+  .dtpm .steps { counter-reset: step; list-style: none; padding: 0; margin: 18px 0; }
+  .dtpm .steps li { position: relative; padding: 2px 0 16px 46px; border-left: 2px solid var(--border); margin-left: 16px; }
+  .dtpm .steps li::before { counter-increment: step; content: counter(step); position: absolute; left: -17px; top: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .9rem; }
+  .dtpm .steps li:last-child { border-left-color: transparent; }
+  .dtpm .steps li h4 { margin: 2px 0 4px; font-size: 1rem; }
+  /* SVG theming */
+  .dtpm svg .box { fill: var(--surface2); stroke: var(--border); stroke-width: 1.5; }
+  .dtpm svg .box-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .dtpm svg .box-good { fill: var(--good-soft); stroke: var(--good); stroke-width: 1.5; }
+  .dtpm svg .box-bad { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1.5; }
+  .dtpm svg .box-warn { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.5; }
+  .dtpm svg text { fill: var(--text); font-family: Lato, sans-serif; }
+  .dtpm svg .t-mono { font-family: var(--mono); }
+  .dtpm svg .t-muted { fill: var(--muted); }
+  .dtpm svg .t-accent { fill: var(--accent); }
+  .dtpm svg .t-good { fill: var(--good); }
+  .dtpm svg .t-bad { fill: var(--bad); }
+  .dtpm svg .edge { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .dtpm svg .edge-good { stroke: var(--good); stroke-width: 2; fill: none; }
+  .dtpm svg .edge-bad { stroke: var(--bad); stroke-width: 2; fill: none; }
+  .dtpm svg .fillmuted { fill: var(--muted); }
+  .dtpm svg .fillgood { fill: var(--good); }
+  .dtpm svg .fillbad { fill: var(--bad); }
+</style>
+</head>
+<body class="rtd" data-page="dtpm">
+<main class="rtd-doc">
+
+  <div class="rtd-breadcrumb">
+    <a href="index.html">OP-TEE on Qualcomm Lemans</a>
+    <span class="sep">›</span>
+    <a href="index.html#dev-branches">Development Branches</a>
+    <span class="sep">›</span>
+    Discrete TPM (dTPM)
+  </div>
+
+  <div class="dtpm">
+
+  <h1>Discrete TPM (dTPM) integration</h1>
+  <p class="lede">A discrete TPM 2.0 (STMicro ST33, SPI-TIS) on QUP2 SE2, <em>owned by the secure world</em> (OP-TEE) and exposed to the normal world through a passthrough pseudo-TA. Linux gets a standard <code>/dev/tpm0</code> and never touches the SPI bus.</p>
+
+  <div class="rtd-note">
+    <strong>Branch:</strong> <code>features/lemans/security/dtpm</code> — a feature branch of
+    <a href="https://github.com/qualcomm-linux/qcom-buildroot">qcom-buildroot</a>. It repoints the Linux
+    and OP-TEE manifest revisions to the trees carrying the dTPM transport, the passthrough PTA and the
+    Lemans SPI/TPM enablement.
+  </div>
+
+  <h2 id="building">Building it</h2>
+  <p>Initialize the workspace against the <code>features/lemans/security/dtpm</code> branch of the build manifest, then build and flash exactly as in the <a href="quick-start.html">Quick Start</a>.</p>
+<pre><code>mkdir sandbox.lemans &amp;&amp; cd sandbox.lemans
+repo init -u https://github.com/qualcomm-linux/qcom-buildroot \
+          -b features/lemans/security/dtpm -m manifests/lemans.xml
+repo sync -j4 --no-clone-bundle
+
+cd build
+make -j8 toolchains
+make -j8 all              # OP-TEE (TPM2 SPI + passthrough PTA) + kernel (optee-dtpm)
+
+# package and flash as usual — see Quick Start for the full procedure
+make bootimage            # tz.mbn + uefi.elf  (OP-TEE brings the TPM up)
+make efi                  # efi.bin           (kernel with the optee-dtpm driver)
+make flash-bootimage
+make flash-uki</code></pre>
+  <div class="callout key"><span class="ct">Secure-world ownership is the design</span>OP-TEE takes the serial engine early in boot, talks TCG SPI-TIS to the chip, and publishes the PTA that the Linux TEE-backed TPM driver binds to. Linux's mainline <code>tpm_tis_spi</code> must stay <em>off</em> (it would contend for the same SE and fail with <code>-110</code>).</div>
+
+  <h2 id="links">Upstream links</h2>
+  <div class="tbl-scroll">
+  <table>
+    <thead><tr><th>Component</th><th>Where</th><th>What</th></tr></thead>
+    <tbody>
+      <tr><td><strong>OP-TEE pull request</strong></td><td><a href="https://github.com/OP-TEE/optee_os/pull/8155">OP-TEE/optee_os#8155</a></td><td>dTPM support: the TCG PTP SPI (TIS) transport, the Qualcomm GENI SPI fixes, and the passthrough PTA.</td></tr>
+      <tr><td><strong>Linux pull request</strong></td><td><a href="https://lore.kernel.org/linux-integrity/20261026163259.1900439-1-jorge.ramirez@oss.qualcomm.com/">lore.kernel.org · linux-integrity</a></td><td>The <code>tpm_dtpm_tee</code> driver that binds the PTA by UUID and presents <code>/dev/tpm0</code>.</td></tr>
+      <tr><td><strong>OP-TEE issue</strong></td><td><a href="https://github.com/OP-TEE/optee_os/issues/8160">OP-TEE/optee_os#8160</a></td><td>Locality support on dTPM — driving TIS locality 4 from the secure world (design follow-up, detailed below).</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- ===== The goal & the stack ===== -->
+  <h2 id="overview">The goal &amp; the stack</h2>
+  <p class="lede">A discrete TPM is physically wired to the SoC's SPI bus. We want the <em>secure world</em> (OP-TEE) to own it, and the normal world (Linux) to reach it through a thin pass-through.</p>
+
+  <p>Unlike the usual arrangement where Linux drives the TPM directly, here OP-TEE takes the serial engine (SE) early in boot, talks TCG SPI-TIS to the chip, and publishes a pseudo-TA that the Linux TEE-backed TPM driver binds to. Everything the TPM sees therefore flows through OP-TEE's own SPI driver.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 230" role="img" aria-label="Data path from the ST33 chip through the SPI engine, OP-TEE and the PTA up to Linux tpm0">
+      <!-- boxes -->
+      <rect class="box-good" x="10"  y="80" width="120" height="70" rx="10"/>
+      <text x="70" y="108" text-anchor="middle" font-weight="700" font-size="14">ST33 TPM</text>
+      <text x="70" y="128" text-anchor="middle" font-size="11" class="t-muted">SPI-TIS chip</text>
+
+      <rect class="box" x="175" y="80" width="135" height="70" rx="10"/>
+      <text x="242" y="104" text-anchor="middle" font-weight="700" font-size="13">QUP2 SE2</text>
+      <text x="242" y="122" text-anchor="middle" font-size="10" class="t-muted t-mono">GENI SPI engine</text>
+      <text x="242" y="138" text-anchor="middle" font-size="10" class="t-muted t-mono">gpio 86-89</text>
+
+      <rect class="box-accent" x="355" y="55" width="180" height="120" rx="10"/>
+      <text x="445" y="46" text-anchor="middle" font-size="11" class="t-accent" font-weight="700">OP-TEE (secure world)</text>
+      <rect class="box" x="370" y="68" width="150" height="26" rx="6"/>
+      <text x="445" y="85" text-anchor="middle" font-size="11" class="t-mono">qcom_geni_spi</text>
+      <rect class="box" x="370" y="99" width="150" height="26" rx="6"/>
+      <text x="445" y="116" text-anchor="middle" font-size="11" class="t-mono">tpm2_spi (TIS)</text>
+      <rect class="box" x="370" y="130" width="150" height="26" rx="6"/>
+      <text x="445" y="147" text-anchor="middle" font-size="11" class="t-mono">tpm2_chip</text>
+
+      <rect class="box-accent" x="580" y="80" width="150" height="70" rx="10"/>
+      <text x="655" y="104" text-anchor="middle" font-weight="700" font-size="13">Passthrough</text>
+      <text x="655" y="122" text-anchor="middle" font-size="10" class="t-muted t-mono">PTA (device-enum)</text>
+      <text x="655" y="138" text-anchor="middle" font-size="10" class="t-muted">REE-kernel only</text>
+
+      <rect class="box" x="775" y="80" width="115" height="70" rx="10"/>
+      <text x="832" y="104" text-anchor="middle" font-weight="700" font-size="13">Linux</text>
+      <text x="832" y="124" text-anchor="middle" font-size="11" class="t-mono">/dev/tpm0</text>
+
+      <!-- arrows -->
+      <defs>
+        <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" class="fillmuted"/>
+        </marker>
+      </defs>
+      <line class="edge" x1="131" y1="115" x2="172" y2="115" marker-end="url(#arr)"/>
+      <line class="edge" x1="311" y1="115" x2="352" y2="115" marker-end="url(#arr)"/>
+      <line class="edge" x1="536" y1="115" x2="577" y2="115" marker-end="url(#arr)"/>
+      <line class="edge" x1="731" y1="115" x2="772" y2="115" marker-end="url(#arr)"/>
+      <text x="151" y="72" text-anchor="middle" font-size="9" class="t-muted">SPI wire</text>
+      <text x="655" y="190" text-anchor="middle" font-size="10" class="t-muted">raw TPM2 cmd/resp bytes</text>
+    </svg>
+    <figcaption>The full path. The chip and wire were always fine &mdash; every bug lived inside OP-TEE's SPI handling.</figcaption>
+  </figure>
+
+  <div class="tbl-scroll">
+  <table>
+    <thead><tr><th>Layer</th><th>What it is</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ST33 TPM</strong></td><td>STMicro discrete TPM 2.0, vendor id <code>0x104A</code></td><td>The security chip. On QUP2 SE2 = <code>spi@888000</code>, 20&nbsp;MHz, CS0.</td></tr>
+      <tr><td><strong>QUP2 SE2</strong></td><td>A Qualcomm GENI serial engine in SPI mode</td><td>The SoC's SPI controller for this bus. OP-TEE loads its firmware and drives it.</td></tr>
+      <tr><td><code>qcom_geni_spi</code></td><td>OP-TEE's GENI SPI driver</td><td>Byte-level transfers, CS control, clocks, interconnect vote.</td></tr>
+      <tr><td><code>tpm2_spi</code></td><td>TCG PTP SPI (TIS) transport</td><td>Turns register reads/writes into SPI transactions with wait-state flow control.</td></tr>
+      <tr><td><code>tpm2_chip</code></td><td>Generic in-core TPM2 stack</td><td>Startup, self-test, capabilities, the <code>send</code>/<code>recv</code> API.</td></tr>
+      <tr><td><strong>Passthrough PTA</strong></td><td>Pseudo Trusted Application</td><td>Lets the Linux kernel pipe raw TPM2 commands in; REE-kernel only.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- ===== The kernel side ===== -->
+  <h2 id="kernel">The kernel side</h2>
+  <p class="lede">The normal world reaches the TPM through one small Linux driver, <code>tpm_dtpm_tee</code>, that binds to the OP-TEE pass-through TA and presents an ordinary <code>/dev/tpm0</code>.</p>
+
+  <p>It is the deliberate sibling of the upstream firmware-TPM driver <code>tpm_ftpm_tee</code>: the same TEE-client plumbing and the same <code>SUBMIT_COMMAND</code> wire shape, but a different UUID &mdash; because this TPM is a <em>real chip</em> behind OP-TEE, not software running inside it. The kernel never touches the SPI bus; it hands command bytes to OP-TEE through shared memory and gets the response back the same way.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 220" role="img" aria-label="One TPM command round-trip from the kernel through OP-TEE to the chip and back">
+      <defs>
+        <marker id="karr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" class="fillmuted"/></marker>
+        <marker id="kret" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" class="fillgood"/></marker>
+      </defs>
+      <rect class="box" x="8" y="58" width="128" height="64" rx="10"/>
+      <text x="72" y="82" text-anchor="middle" font-size="12" font-weight="700">TPM core</text>
+      <text x="72" y="102" text-anchor="middle" font-size="11" class="t-mono t-muted">/dev/tpm0</text>
+
+      <rect class="box-accent" x="170" y="58" width="140" height="64" rx="10"/>
+      <text x="240" y="82" text-anchor="middle" font-size="12" font-weight="700" class="t-mono">tpm_dtpm_tee</text>
+      <text x="240" y="102" text-anchor="middle" font-size="10" class="t-muted">.send (sync)</text>
+
+      <rect class="box" x="344" y="58" width="150" height="64" rx="10"/>
+      <text x="419" y="80" text-anchor="middle" font-size="12" font-weight="700">TEE shared mem</text>
+      <text x="419" y="100" text-anchor="middle" font-size="9.5" class="t-mono t-muted">cmd@0 &middot; resp@4096</text>
+
+      <rect class="box-accent" x="528" y="58" width="150" height="64" rx="10"/>
+      <text x="603" y="80" text-anchor="middle" font-size="12" font-weight="700">OP-TEE PTA</text>
+      <text x="603" y="100" text-anchor="middle" font-size="10" class="t-muted">REE_KERNEL gate</text>
+
+      <rect class="box-good" x="712" y="58" width="180" height="64" rx="10"/>
+      <text x="802" y="80" text-anchor="middle" font-size="12" font-weight="700">tpm2_chip &rarr; ST33</text>
+      <text x="802" y="100" text-anchor="middle" font-size="10" class="t-muted">SPI-TIS</text>
+
+      <!-- forward (command) -->
+      <line class="edge" x1="136" y1="90" x2="167" y2="90" marker-end="url(#karr)"/>
+      <line class="edge" x1="310" y1="90" x2="341" y2="90" marker-end="url(#karr)"/>
+      <line class="edge" x1="494" y1="90" x2="525" y2="90" marker-end="url(#karr)"/>
+      <line class="edge" x1="678" y1="90" x2="709" y2="90" marker-end="url(#karr)"/>
+      <text x="500" y="38" text-anchor="middle" font-size="11" class="t-muted">&rarr;&nbsp; command bytes (invoke SUBMIT_COMMAND)</text>
+
+      <!-- return (response) -->
+      <path class="edge-good" d="M802,122 V175 H72 V124" marker-end="url(#kret)"/>
+      <text x="440" y="195" text-anchor="middle" font-size="11" class="t-good">&larr;&nbsp; response bytes return through the same shared buffer</text>
+    </svg>
+    <figcaption>One command round-trip. The kernel driver is pure transport &mdash; it marshals bytes to OP-TEE and back; all the TPM and SPI logic lives in the secure world.</figcaption>
+  </figure>
+
+  <div class="tbl-scroll">
+  <table>
+    <thead><tr><th>Property</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>File</td><td><code>drivers/char/tpm/tpm_dtpm_tee.c</code></td></tr>
+      <tr><td>Kconfig</td><td><code>TCG_DTPM_TEE</code> &mdash; <code>depends on TEE &amp;&amp; OPTEE</code></td></tr>
+      <tr><td>Binds by</td><td>TEE device-bus UUID <code>50568cd9-&hellip;-d2ee</code> (matches the PTA)</td></tr>
+      <tr><td>Transport</td><td><code>SUBMIT_COMMAND</code> &mdash; <code>memref[0]</code> command in, <code>memref[1]</code> response in/out</td></tr>
+      <tr><td>Shared memory</td><td>4&nbsp;KiB command + 4&nbsp;KiB response</td></tr>
+      <tr><td>Chip flags</td><td><code>TPM2</code> &middot; <code>SYNC</code> (send returns the response in place)</td></tr>
+      <tr><td>Login</td><td><code>TEE_IOCTL_LOGIN_REE_KERNEL</code> &mdash; required by the PTA gate</td></tr>
+      <tr><td>Bounds checks</td><td>response length validated against header size, 4&nbsp;KiB cap, and caller buffer</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout good"><span class="ct">Upstream shape</span>A single commit (<code>c611cd4c9</code>), modeled on the accepted <code>tpm_ftpm_tee</code> driver: <code>match</code>/<code>probe</code>/<code>remove</code>/<code>id_table</code>, goto-based error unwind, kernel-doc, and a tight two-paragraph message. The <code>REE_KERNEL</code> login is part of it from the first line, so there is no introduce-then-fix seam.</div>
+
+  <div class="callout warn"><span class="ct">The lesson that cost a reflash</span>This driver and the PTA's login gate are a <strong>pair</strong>. The driver first opened with <code>LOGIN_PUBLIC</code>; after the PTA was hardened to require <code>REE_KERNEL</code>, the probe failed with <code>ACCESS_DENIED</code> until the driver was changed to match. Change the gate and its one caller together.</div>
+
+  <!-- ===== Who drives the TPM ===== -->
+  <h2 id="ownership">Who drives the TPM &mdash; and what the event log would change</h2>
+  <p class="lede">In this series OP-TEE <em>owns and transports</em> the chip; Linux runs the TPM software stack. The secure world does not measure anything into the TPM &mdash; which is exactly why the TCG event-log path is left off.</p>
+
+  <h3>Today: OP-TEE owns, Linux measures</h3>
+  <p>OP-TEE brings the serial engine up, registers the chip, and exposes it through the pass-through PTA. That is the whole of its involvement: it never issues a TPM command of its own. Every <code>TPM2_Startup</code>, PCR extend, quote, or key operation originates in Linux &mdash; IMA, trusted keys, measured boot, <code>tpm2-tools</code> &mdash; and travels as opaque command bytes through the PTA. From the chip's point of view there is one master of TPM <em>semantics</em>: the normal world.</p>
+  <p>Because of that, the in-core TCG PCR provider (<code>core/kernel/tcg.c</code>, bridged by <code>tpm2_tcg.c</code>) has no job here. It is gated behind <code>CFG_CORE_TPM_EVENT_LOG</code>, which expects earlier firmware to have performed measured boot and handed OP-TEE a crypto-agile event log at a fixed address to replay. The Lemans EVK has no such log, so the provider is off &mdash; and commit <code>219fe54c9</code> makes chip registration succeed <em>without</em> it: the stub returns <code>NOT_IMPLEMENTED</code>, which is read as &ldquo;no provider built in,&rdquo; not as a failure.</p>
+
+  <h3>If the event log were enabled</h3>
+  <p>Turning on <code>CFG_CORE_TPM_EVENT_LOG</code> (and with it <code>CFG_CORE_TCG_PROVIDER</code>) changes OP-TEE's role from transport to <em>measurement root</em>. OP-TEE would parse the firmware event log, replay it into the TPM &mdash; extending PCRs from the secure world &mdash; and continue the boot-measurement chain before Linux ever runs. The bridge (<code>tpm2_tcg.c</code>) that plugs our chip into that framework is already present (restored by the revert); only the config flags and an actual event log are missing.</p>
+
+  <div class="tbl-scroll">
+  <table>
+    <thead><tr><th></th><th>This series (event log off)</th><th>Event log on</th></tr></thead>
+    <tbody>
+      <tr><td>OP-TEE's role</td><td>Owner / transport only</td><td>Measurement root &mdash; replays log, extends PCRs</td></tr>
+      <tr><td>Who issues TPM commands</td><td>Linux only</td><td>Secure world (early) <em>then</em> Linux</td></tr>
+      <tr><td>PCR state at Linux boot</td><td>Pristine (zero, unless prior firmware touched it)</td><td>Pre-seeded with the secure-boot measurements</td></tr>
+      <tr><td>Needs</td><td>Nothing extra</td><td><code>CFG_CORE_TPM_EVENT_LOG</code> + a firmware event log at a fixed PA</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>What it would mean for Linux</h3>
+  <p>Linux would still reach the same <code>/dev/tpm0</code> through the same PTA &mdash; the driver and wire format do not change. What changes is <em>what the PCRs already contain</em>: instead of starting from zero, the lower PCRs would hold the measurements the secure world replayed, and Linux's own IMA / measured-boot extends would build on that chain rather than beginning it. That is the point &mdash; a root of trust for measurement anchored before the normal world.</p>
+
+  <div class="callout warn"><span class="ct">Two measurers, one chip</span>Enabling it puts the secure world and Linux on the same PCR bank. That is only coherent with a clear handoff: the secure world measures early and stops, Linux continues. Flipping the flag without that discipline gives races and PCR values neither side can explain. For the &ldquo;Linux gets a working TPM&rdquo; goal of this series, none of that is needed &mdash; which is why it stays off.</div>
+
+  <!-- ===== OP-TEE issue, locality 4 ===== -->
+  <h2 id="issue">OP-TEE issue &mdash; locality 4</h2>
+  <p class="lede">Filed as <a href="https://github.com/OP-TEE/optee_os/issues/8160">OP-TEE/optee_os#8160</a>: why the TPM lives on a bus the secure world owns, and why that ownership is what makes TIS <strong>locality 4</strong> meaningful.</p>
+
+  <div class="callout key"><span class="ct">The crux</span>On a TIS TPM the locality is <em>not</em> a credential the chip verifies &mdash; it is just which register page the bus master addresses (on SPI, encoded in the address: <code>0xD4_0000&nbsp;+&nbsp;locality&times;0x1000</code>). So locality 4 only means &ldquo;trusted hardware&rdquo; if nothing untrusted can reach that page. A secure-owned bus is exactly that guarantee: OP-TEE is the sole master, pins Linux to locality&nbsp;0, and keeps the higher localities for itself.</div>
+
+  <h3>Primer: what a locality is, and how one is requested</h3>
+  <p>A locality is the TPM's notion of <em>who is asking</em> &mdash; a privilege level (0&ndash;4, higher = more trusted) attached to every command. One physical chip, five privilege lanes. The TPM never authenticates it: it believes whatever the bus presents, so the <em>platform</em> must ensure only the right software can reach each lane. Two mechanisms combine.</p>
+
+  <p><strong>1 &middot; Addressing selects the lane.</strong> Every locality has its own copy of the TIS registers &mdash; same offsets, a different 4&nbsp;KB page. On SPI the page is just address bits <code>[15:12]</code>:</p>
+  <pre><code>register for locality L   =   0xD4_0000 | (L &lt;&lt; 12) | offset
+  ACCESS (off 0x00)   loc 0 -&gt; 0xD40000   loc 4 -&gt; 0xD44000
+  STS    (off 0x18)   loc 0 -&gt; 0xD40018   loc 4 -&gt; 0xD44018
+  FIFO   (off 0x24)   loc 0 -&gt; 0xD40024   loc 4 -&gt; 0xD44024</code></pre>
+  <p>The current TIS backend hard-codes <code>L=0</code> (the <code>0xD40xxx</code> page). Driving locality 4 means forming the address with <code>L=4</code>.</p>
+
+  <p><strong>2 &middot; The <code>TPM_ACCESS</code> register is the request/grant handshake.</strong> Only one locality owns the TPM at a time; ownership is arbitrated through <code>ACCESS</code> (offset <code>0x00</code> of each page):</p>
+  <div class="tbl-scroll">
+  <table>
+    <thead><tr><th>bit</th><th>name</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>requestUse</code></td><td>write 1 &rarr; &ldquo;I want this locality&rdquo;</td></tr>
+      <tr><td>3</td><td><code>Seize</code></td><td>write 1 &rarr; forcibly take it from a <em>lower</em> locality</td></tr>
+      <tr><td>5</td><td><code>activeLocality</code></td><td>read 1 &rarr; you own it; write 1 &rarr; release it</td></tr>
+      <tr><td>7</td><td><code>tpmRegValidSts</code></td><td>read 1 &rarr; register contents are valid</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>So &ldquo;requesting a locality&rdquo; is not a pin or a signal &mdash; it is this register conversation, addressed to the page you want. To run a command at locality 4:</p>
+  <ol class="steps">
+    <li><h4>Request</h4>SPI-write <code>requestUse</code> (bit 1) to <code>0xD44000</code>.</li>
+    <li><h4>Poll for grant</h4>SPI-read <code>0xD44000</code> until <code>activeLocality</code> (bit 5) reads 1. The TPM grants only once the current owner releases &mdash; or a higher locality sets <code>Seize</code> (bit 3) to preempt a lower one.</li>
+    <li><h4>Transact</h4>Write the command to the FIFO (<code>0xD44024</code>), drive it via <code>STS</code> (<code>0xD44018</code>), read the response &mdash; all on the <code>0xD44xxx</code> page, so every byte is tagged locality 4.</li>
+    <li><h4>Release</h4>SPI-write <code>activeLocality</code> (bit 5) to <code>0xD44000</code>; the lane is free again.</li>
+  </ol>
+  <div class="callout key"><span class="ct">Why priority is the whole point</span>Arbitration is by number: a higher locality can always seize a lower one, never the reverse. So whoever can <em>address</em> the locality-4 page can always preempt locality&nbsp;0. The platform must guarantee only the trusted path can reach that page &mdash; on SPI there is no chipset address-decode to enforce it, so the guarantee <em>is</em> owning the bus. That is the hardware reason locality 4 equals &ldquo;trusted hardware.&rdquo;</div>
+
+  <h3>The filed issue</h3>
+  <p>The text as filed on <a href="https://github.com/OP-TEE/optee_os/issues/8160">#8160</a>:</p>
+
+  <pre><code>## Summary
+
+Add first-class support in OP-TEE for a *discrete* TPM 2.0 that lives on a bus
+the secure world owns exclusively, exposed to the normal world through a
+passthrough pseudo-TA. The transport (TCG PTP / TIS over SPI) and the PTA are in
+PR #8155. This issue covers the design rationale and one capability the design
+depends on: letting the secure world drive the TPM at an elevated TIS
+**locality**, specifically **locality 4**.
+
+## Use case
+
+- A real TPM chip (e.g. ST33, SPI-TIS) is wired to a serial engine only OP-TEE
+  can program. Linux has no path to the controller.
+- OP-TEE brings the engine up, registers the chip, and relays opaque TPM2
+  command bytes for the normal world through a passthrough PTA.
+- Linux presents a standard `/dev/tpm0` and runs the full TPM stack (IMA,
+  trusted keys, measured boot, tpm2-tools) unchanged.
+- Net: the normal world gets a working hardware TPM but never touches the wire;
+  every byte is mediated by the secure world.
+
+## Why the bus must be owned by OP-TEE
+
+Localities only mean something if the entity asserting them is trusted. On a TIS
+TPM the locality is not a credential the TPM verifies &mdash; it is simply which
+register page the master addresses (on SPI the locality is encoded in the
+register address, `0xD4_0000 + locality*0x1000`). The TPM trusts that the
+platform only lets privileged software reach the privileged pages.
+
+If the normal world drives the controller, that assumption is gone: whoever
+programs the SPI master picks the locality, so locality 4 is worthless as a
+trust signal &mdash; a compromised REE could assert it.
+
+Making the bus secure-only restores the guarantee in software:
+
+- OP-TEE is the *sole* SPI master, so it is the sole arbiter of which locality
+  reaches the wire.
+- The passthrough PTA pins the normal world to locality 0 while OP-TEE reserves
+  the higher localities for itself.
+- Locality 4 regains its meaning &mdash; "the trusted-hardware path" &mdash;
+  because nothing outside the secure world can physically assert it.
+
+## What locality 4 is
+
+TIS defines five localities (0-4), each a separate register page, as a
+privilege/source indicator; higher is more privileged.
+
+- **0** - legacy / normal OS and applications.
+- **1-2** - OS / dynamically-launched trusted OS (D-RTM runtime).
+- **3** - auxiliary components (ACM).
+- **4** - *trusted hardware*, the highest. It is the only locality allowed to
+  drive the `_TPM_Hash_Start` / `_TPM_Hash_Data` / `_TPM_Hash_End` sequence that
+  establishes a Dynamic Root of Trust for Measurement, and it is the reset
+  authority for the D-RTM PCRs (PCR 17 is resettable only from locality 4).
+  Objects and NV indices can be bound to a locality via `TPM2_PolicyLocality`,
+  so a secret sealed to locality 4 is unsealable only from locality 4.
+
+## Why we want locality 4 here
+
+With a secure-owned bus, OP-TEE can legitimately be that trusted-hardware
+component:
+
+- **Measurement root.** OP-TEE can reset/extend the D-RTM PCRs and anchor
+  measured boot in PCRs the normal world can neither reset nor forge.
+- **Sealing to the secure world.** Secrets sealed to locality 4 can only be
+  unsealed by OP-TEE, even though the chip is shared with Linux.
+- **Tamper-evident split.** Linux (locality 0) and OP-TEE (locality 1 and up,
+  through 4) share one chip, but the normal world cannot spoof or replay the
+  secure world's measurements because it cannot reach the privileged localities.
+
+None of this is possible on a normal-world-driven TPM; it is a direct
+consequence of the secure world owning the transport.
+
+Scope of the "need for locality 4": only D-RTM (the `_TPM_Hash_*` sequence and
+PCR-17 reset) strictly requires locality 4. The sealing / secure-NV /
+measurement-root cases only need *a locality the normal world cannot assert* --
+locality 4 is simply the natural choice. Either way these privileged commands
+are ones OP-TEE constructs and issues itself; the passthrough path is never run
+above locality 0, so the normal world cannot borrow a privileged locality by
+submitting a command through the PTA.
+
+## Ask
+
+- Extend the OP-TEE TIS/TPM2 stack to select the TIS locality (request /
+  relinquish, address encoding) instead of assuming locality 0.
+- Let the secure world drive locality 4 and reserve the higher localities from
+  the passthrough path, keeping the normal world on locality 0.
+- Decide how this should surface: a build/config option, a per-chip property, or
+  a PTA-level policy for which localities the normal world may use.
+
+## References
+
+- OP-TEE transport + passthrough PTA: OP-TEE/optee_os#8155
+- Linux TEE driver (`tpm_dtpm_tee`):
+  https://lore.kernel.org/linux-integrity/20261026163259.1900439-1-jorge.ramirez@oss.qualcomm.com/
+</code></pre>
+
+  <!-- ===== Verification ===== -->
+  <h2 id="verify">Verification</h2>
+  <p class="lede">Secure-world and normal-world, both confirmed on hardware.</p>
+  <h3>OP-TEE boot (secure world)</h3>
+  <pre><code>I/TC: QUP SPI 15: voted BCM 'QUP2' (addr=0x50078 data=0x60004001)
+I/TC: QUP SPI 15: fw loaded (protocol=1 fw_version=0xb02 cfg_version=0x9)
+I/TC: TPM2 SPI: TPM detected, DID_VID=0x104a
+I/TC: TPM2 SPI: ACCESS ... (VALID=1)
+I/TC: TPM2 SPI chip registered</code></pre>
+  <h3>Linux (normal world)</h3>
+  <pre><code># ls -la /dev/tpm*
+crw-------  1 root root  10, 224   /dev/tpm0
+crw-------  1 root root 249, 65536 /dev/tpmrm0
+# cat /sys/class/tpm/tpm0/tpm_version_major
+2</code></pre>
+  <p class="callout good"><span class="ct">End to end</span>Both device nodes present, resource-manager too, reporting TPM <strong>2.0</strong>. ST33 &rlarr; GENI SE &rlarr; OP-TEE &rlarr; PTA &rlarr; Linux <code>tpm0</code>.</p>
+
+  <!-- ===== Glossary ===== -->
+  <h2 id="glossary">Glossary</h2>
+  <div class="tbl-scroll">
+  <table>
+    <tbody>
+      <tr><td><strong>TPM / dTPM</strong></td><td>Trusted Platform Module; "discrete" = a real chip, as opposed to a firmware TPM (fTPM).</td></tr>
+      <tr><td><strong>TCG PTP SPI / TIS</strong></td><td>The standard register protocol for talking to a TPM over SPI, including the wait-state handshake.</td></tr>
+      <tr><td><strong>GENI SE / QUP</strong></td><td>Qualcomm's generic serial engine; a configurable block that can be SPI, I2C, UART, etc.</td></tr>
+      <tr><td><strong>NoC / interconnect</strong></td><td>The on-chip network connecting blocks to memory and peripherals; bandwidth on it must be requested.</td></tr>
+      <tr><td><strong>BCM / RPMh / cmd_db</strong></td><td>Bus Clock Manager, the resource-power-manager interface, and the command database used to place interconnect/clock votes.</td></tr>
+      <tr><td><strong>CS</strong></td><td>Chip Select: the SPI line that frames a transaction; must stay asserted across a multi-transfer TIS exchange.</td></tr>
+      <tr><td><strong>FRAGMENTATION</strong></td><td>A GENI command parameter bit meaning "this is one fragment of a larger transaction &mdash; keep CS asserted."</td></tr>
+      <tr><td><strong>PTA</strong></td><td>Pseudo Trusted Application: in-core OP-TEE service the normal world can call.</td></tr>
+      <tr><td><strong>IMSG / DMSG / FMSG / EMSG</strong></td><td>OP-TEE log levels: Info, Debug, Flow (trace), Error.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="rtd-prevnext">
+    <a href="index.html">← Back to index</a>
+    <span class="spacer"></span>
+    <a href="index.html#dev-branches">Development Branches</a>
+  </div>
+
+  </div><!-- /.dtpm -->
+
+</main>
+<script src="_rtd.js"></script>
+</body>
+</html>
